@@ -406,6 +406,51 @@ After installing, you will see a yellow warning flag in Server Manager.
 
 This authorizes the DHCP server in your network (required for Active Directory).
 
+### Understanding DHCP Manager Folder Structure
+
+After authorization, open **Server Manager → Tools → DHCP**. You will see:
+
+```
+DHCP
+└── win-j17imhcema9.e6.local       <- Your DHCP server name
+    ├── IPv4                         <- DHCP for IPv4 (we use this)
+    │   ├── Server Options           <- Settings that apply to ALL scopes
+    │   ├── Policies                 <- Rules (e.g. give specific IP to specific device)
+    │   └── Filters                  <- Allow/block devices by MAC address
+    │
+    └── IPv6                         <- DHCP for IPv6 (ignore for now)
+        └── Server Options
+```
+
+| Folder | Purpose | Do You Need It? |
+|:-------|:--------|:---------------|
+| **IPv4** | Where you create your DHCP scope (IP range) | Yes - work here |
+| **Server Options** | Default settings (gateway, DNS) for ALL scopes | Optional |
+| **Policies** | Advanced rules like "give Windows devices one IP range, phones another" | Not needed now |
+| **Filters** | Allow or deny specific devices by MAC address | Not needed now |
+| **IPv6** | Same as IPv4 but for IPv6 addresses | Ignore for now |
+
+### Difference Between Server Options and Scope Options
+
+- **Server Options (Global):** Settings configured here apply to **ALL scopes** on this DHCP server (e.g., if you have 5 different subnets, they will all inherit these DNS or Gateway settings).
+- **Scope Options (Local):** Settings configured inside a specific Scope apply **ONLY to that scope**. Scope Options will override Server Options if both exist.
+
+> **Best Practice for Labs:** We configure options directly inside **Scope Options** during scope creation so that each scope/subnet has its exact custom settings.
+
+After creating a scope, the tree will look like:
+
+```
+IPv4
+├── Scope [192.168.1.0] Lab Network    <- NEW! (we create this next)
+│   ├── Address Pool                    <- Shows IP range (.100-.200)
+│   ├── Address Leases                  <- Shows which clients got an IP
+│   ├── Reservations                    <- Fixed IPs for specific devices
+│   └── Scope Options                   <- Gateway, DNS for THIS specific scope
+├── Server Options                     <- Global defaults for ALL scopes
+├── Policies
+└── Filters
+```
+
 ### B3. Configure DHCP Scope
 
 A "Scope" defines the range of IP addresses the DHCP server will give out.
