@@ -33,6 +33,8 @@
                     └────────────────────────────────────────┘
 ```
 
+> **Note on Network Alignment:** Both Server (`192.168.1.10`) and Client (`192.168.1.100`) are connected to **VMnet8** and belong to the exact same subnet (`192.168.1.0/24`). This allows direct local SMB file sharing and FTP communication with `<1ms` response time!
+
 ---
 
 ## Key Concepts Explained

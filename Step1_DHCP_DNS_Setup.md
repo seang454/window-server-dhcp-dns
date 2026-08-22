@@ -67,7 +67,15 @@ Reserved for future       192.168.1.12 - .99      (available)
 - "Localhost" — means "myself" / "this computer"
 - When your server uses `127.0.0.1` as DNS, it asks itself for DNS answers
 
-### How Subnetting (/24) & IP Range is Calculated
+### Local vs. Public Network Scope for DHCP & DNS
+
+| Feature | Local Private Network (`192.168.1.0/24`) | Public Network / Internet |
+|:---|:---|:---|
+| **DHCP Server** | **100% Local.** Assigns private IPs (`.100 - .200`) to local clients on VMnet8. | Does NOT touch or affect public internet. |
+| **DNS Server (Internal)** | **100% Local.** Resolves `server1.e6.local` → `192.168.1.10` locally. | Local queries stay inside your private network. |
+| **DNS Forwarder (`8.8.8.8`)** | Receives unknown public queries from local clients... | Forwards public queries (like `google.com`) to Google's public DNS servers. |
+
+> **Key Takeaway:** Your DHCP and DNS servers operate **locally on your private network** (`192.168.1.0/24`). They do NOT require a public IP address or internet connection to function for all your local lab services!
 
 #### 1. What does `/24` mean?
 - Subnet Mask `255.255.255.0` in CIDR notation is written as **/24**.
