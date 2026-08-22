@@ -42,10 +42,22 @@ Reserved for future       192.168.1.12 - .99      (available)
 - You set the gateway IP in VMware's **Virtual Network Editor → VMnet8 → NAT Settings**
 - ALL devices on the network must point to the SAME gateway
 
-**What is `8.8.8.8`?**
-- Google's public DNS server (a real server on the internet)
+**What is `8.8.8.8` and `8.8.4.4`?**
+- They are **Google's free public DNS servers** (real servers on the internet)
+- `8.8.8.8` = Google DNS Primary (main server)
+- `8.8.4.4` = Google DNS Backup (if 8.8.8.8 is down, this one takes over)
 - Used as a forwarder: when your DNS doesn't know an answer, it asks Google
-- `8.8.4.4` is Google's backup DNS server
+- Why two? If one goes down, the other keeps working — so you always have DNS
+
+**Other Free Public DNS Servers (alternatives to Google):**
+
+| Provider | Primary | Backup |
+|:---------|:--------|:-------|
+| **Google** | `8.8.8.8` | `8.8.4.4` |
+| Cloudflare | `1.1.1.1` | `1.0.0.1` |
+| OpenDNS | `208.67.222.222` | `208.67.220.220` |
+
+> Google's `8.8.8.8` is the most popular and easy to remember, so we use it.
 
 **What is `0.0.0.0`?**
 - NOT a real server — it means "nothing" or "no address"
