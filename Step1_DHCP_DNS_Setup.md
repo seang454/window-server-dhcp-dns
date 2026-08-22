@@ -515,24 +515,37 @@ These options are sent to EVERY device that gets an IP from your DHCP server.
 1. Type: `192.168.1.1` (your VMware NAT gateway)
 2. Click **Add** → **Next**
 
-> **Why 192.168.1.1?** This tells client devices: "To reach the internet,
-> send traffic to 192.168.1.1 (the VMware NAT router)."
+> **Why is Default Gateway added to DHCP?**
+> When a client connects, DHCP provides **4 essential settings**:
+> 1. IP Address (`192.168.1.100`)
+> 2. Subnet Mask (`255.255.255.0`)
+> 3. **Default Gateway (`192.168.1.1`)** — Tells clients where the router/internet exit door is.
+> 4. DNS Server (`192.168.1.10`)
+> 
+> *If you omit Default Gateway in DHCP:* The client gets an IP address and can talk to local servers (`192.168.1.x`), but **WILL NOT have internet access** because it doesn't know where the router is!
 
 #### DNS Server:
 1. Parent domain: `e6.local`
-2. In the IP address box, type: `192.168.1.10` (your server)
-3. Click **Add** → **Next**
+2. In the IP address box, make sure `192.168.1.10` (your server) is listed.
+3. If `8.8.8.8` is listed in the box, select it and click **Remove**.
+4. Click **Next**
 
-> **Why 192.168.1.10?** This tells client devices: "For DNS lookups,
-> ask 192.168.1.10 (your Windows Server with DNS installed)."
+> **Why remove 8.8.8.8?** 
+> `192.168.1.10` (your server) resolves local domain names (`e6.local`) AND forwards internet queries to Google (`8.8.8.8`). If clients ask `8.8.8.8` directly, Google will fail to resolve internal names like `server1.e6.local`. Clients must ONLY point to `192.168.1.10`.
 
 #### WINS Servers:
-1. Skip (click **Next**) — WINS is old and not needed
+1. Leave blank and click **Next**
+
+> **What is WINS?**
+> WINS (Windows Internet Name Service) is an old legacy NetBIOS name resolution system used in Windows 95/NT/2000 before DNS existed. Modern networks use DNS, so WINS is left unconfigured.
 
 #### Activate Scope:
-1. Select **Yes, I want to activate this scope now** → **Next → Finish**
+1. Select **Yes, I want to activate this scope now** → Click **Next → Finish**
 
-**DHCP Server is now working!**
+> **What does activating the scope do?**
+> An inactive scope sits disabled. Activating the scope enables the DHCP service to start listening for client requests and handing out IP addresses from the `192.168.1.100 - .200` pool.
+
+**DHCP Server is now fully configured and active!**
 
 ---
 
