@@ -547,6 +547,43 @@ These options are sent to EVERY device that gets an IP from your DHCP server.
 
 **DHCP Server is now fully configured and active!**
 
+### How Virtual Networking Works (VMnet8 as a Virtual Switch)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       YOUR PHYSICAL PC (HOST COMPUTER)                      │
+│                                                                             │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │                        VMware Workstation                           │   │
+│   │                                                                     │   │
+│   │             ┌────────────────────────────────────────┐              │   │
+│   │             │   VMnet8 Virtual Switch (192.168.1.0)  │              │   │
+│   │             └───────┬────────────────────┬───────────┘              │   │
+│   │                     │ Virtual Cable 1    │ Virtual Cable 2          │   │
+│   │                     ▼                    ▼                          │   │
+│   │             ┌───────────────┐    ┌───────────────┐                  │   │
+│   │             │ Server VM     │    │ Client VM     │                  │   │
+│   │             │ 192.168.1.10  │    │ 192.168.1.100 │                  │   │
+│   │             └───────────────┘    └───────────────┘                  │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### How the VMs talk to each other step-by-step:
+1. **The Virtual Switch (VMnet8):** VMware creates an invisible, virtual Ethernet switch inside your RAM named **VMnet8**.
+2. **The Virtual Cable:** Selecting **NAT** in VM settings plugs a virtual network cable from that VM into **VMnet8**.
+3. **DHCP Communication (DORA Process):**
+   * **D - Discover:** Client VM broadcasts on VMnet8: *"Is there a DHCP Server on this switch?"*
+   * **O - Offer:** Server VM receives the broadcast on VMnet8 and replies: *"Yes! I offer IP 192.168.1.100."*
+   * **R - Request:** Client VM replies: *"Great! I accept IP 192.168.1.100."*
+   * **A - Acknowledge:** Server VM replies: *"Confirmed! IP 192.168.1.100 is yours for 8 days."*
+
+> **What if VMs are on different VMnets (e.g. Server on VMnet8, Client on VMnet1)?**
+> - **They WILL NOT talk to each other!**
+> - It is like plugging Server into a switch in Room A and Client into a switch in Room B with no cable between the rooms.
+> - The DHCP Discover broadcast from Client stays inside VMnet1 and never reaches Server on VMnet8.
+> - The Client will fail to get an IP and get a `169.254.x.x` (APIPA) address. Both VMs **MUST** be on the SAME VMnet (VMnet8).
+
 ---
 
 ## Part C: Test with Client VM (pro-win-client)
