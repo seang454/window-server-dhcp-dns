@@ -121,6 +121,13 @@ You can test File Server and FTP Server access from your client computer using t
 > 2. **Course Grading:** Professors grade whether client machines are properly integrated into Active Directory.
 > 3. **NTFS Permission Testing:** Allows testing different domain user accounts (`E6\HR_User` vs `E6\Sales_User`).
 
+> **How `Domain Users` permissions work on an Unjoined (Workgroup) Client:**
+> - Does an unjoined client understand `Domain Users`? **The client doesn't need to!**
+> - When the unjoined client opens `\\192.168.1.10\CompanyData`, Windows prompts for credentials.
+> - The user enters `E6\Administrator` or `E6\DomainUser`.
+> - **The Windows Server** receives the credentials, checks Active Directory to verify membership in `Domain Users`, and grants access!
+> - Therefore, `Domain Users` permissions work 100% properly even from unjoined clients as long as domain credentials (`E6\user`) are provided in the popup window.
+
 ---
 
 ### A4. Client Testing Flow for File Server (`pro-win-client`)
