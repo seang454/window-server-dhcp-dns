@@ -288,7 +288,27 @@ Now `server1.e6.local` will resolve to `192.168.1.10`.
 
 8. Click **Finish**
 
-### A5. Set DNS Forwarder (So google.com works)
+### A5. Add PTR Record in Reverse Lookup Zone
+
+The reverse zone is now created but it's **empty**. You must manually add a
+PTR record for your server. (DHCP clients will auto-register later, but
+servers with static IPs must be added manually.)
+
+> **Why is it not auto-configured?**
+> - Creating the zone = buying an empty notebook
+> - Adding the PTR record = writing a contact in the notebook
+> - The zone doesn't know which devices exist — YOU tell it by adding records
+> - Only static IP devices (servers) need manual PTR records
+> - DHCP clients will auto-register because you chose "secure dynamic updates"
+
+1. Expand **Reverse Lookup Zones**
+2. Click on **`1.168.192.in-addr.arpa`**
+3. Right-click in the right panel → **New Pointer (PTR)...**
+4. Host IP Address: add `10` after `192.168.1.` → so it shows `192.168.1.10`
+5. Host name: type `server1.e6.local`
+6. Click **OK**
+
+### A6. Set DNS Forwarder (So google.com works)
 
 **Why do you need a forwarder?**
 Your DNS server knows about `e6.local` (your private domain), but it does
@@ -312,7 +332,7 @@ Client asks: "What is google.com?"
 5. Type `8.8.4.4` → Press **Enter**
 6. Click **OK → OK**
 
-### A6. Change DNS Setting Back to Yourself
+### A7. Change DNS Setting Back to Yourself
 
 If you changed DNS to 8.8.8.8 earlier (to fix internet), change it back now
 so your server uses its own DNS:
@@ -321,7 +341,7 @@ so your server uses its own DNS:
 Set-DnsClientServerAddress -InterfaceAlias "Ethernet0" -ServerAddresses 127.0.0.1, 8.8.8.8
 ```
 
-### A7. Test DNS
+### A8. Test DNS
 
 Open PowerShell and run:
 
