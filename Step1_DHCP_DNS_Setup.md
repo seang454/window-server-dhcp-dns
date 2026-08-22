@@ -676,6 +676,18 @@ On your **Windows Server**, verify the DHCP lease:
 - The icon sometimes takes time to update
 - `ipconfig /release` and `/renew` don't work with static IP — this is normal
 
+### Understanding External Ping / Test-NetConnection to `google.com` (Timeouts)
+- **Symptom:** `nslookup google.com` succeeds (returns `142.250.198.174`), but `ping google.com` or `Test-NetConnection -Port 443` times out.
+- **Why this happens:** 
+  1. VMware NAT service on your Host PC isolates VMnet8 from forwarding ICMP ping & certain raw TCP packets outbound.
+  2. Physical Host Wi-Fi routers & Windows Host Defender Firewall often block/drop outbound ICMP/TCP traffic originating from virtual network adapters.
+- **Does this affect lab grading? NO!**
+  - Your Windows Server lab tests **internal LAN communication**:
+    - DHCP IP Leasing (`192.168.1.100`) ✅
+    - Local Domain DNS (`server1.e6.local` → `192.168.1.10`) ✅
+    - Client-to-Server Ping (`ping server1.e6.local` 0ms delay) ✅
+  - All 14 server roles (File Server, FTP, IIS, RDP, VPN, RADIUS) run locally inside `192.168.1.0/24` between your VMs and do NOT require outbound internet.
+
 ---
 
 ## Summary
