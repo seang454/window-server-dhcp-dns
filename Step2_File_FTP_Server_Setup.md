@@ -53,6 +53,18 @@ Network Request  ──► [ 1. Share Permissions ] ──► [ 2. NTFS Permissi
 > - Set **Share Permissions** to `Everyone = Full Control`.
 > - Control actual security using **NTFS Permissions** (Security tab) because NTFS permissions apply both locally and over the network!
 
+### 2. Active Directory Security Groups (`Domain Users` vs. `Domain Admins`)
+
+In Active Directory, users are organized into **Security Groups** to manage folder permissions easily:
+
+| Security Group | Who is inside? | Best Used For |
+|:---|:---|:---|
+| **`Domain Users`** | **EVERY user account** created in Active Directory (automatically added). | Granting general access to company-wide shared folders (`CompanyData`, `Public`). |
+| **`Domain Admins`** | System Administrators only. | Full administrative control over all domain controllers, servers, and computers. |
+
+> **Why use `Domain Users` in folder permissions?** 
+> Instead of manually typing 500 employee names into folder permissions one by one, you simply add `e6\Domain Users`. Automatically, every current and future employee gets access!
+
 ---
 
 ## Part A: File Server Setup (SMB Shared Folders)
@@ -95,7 +107,23 @@ Network Request  ──► [ 1. Share Permissions ] ──► [ 2. NTFS Permissi
 
 ---
 
-### A3. Client Testing Flow for File Server (`pro-win-client`)
+### A3. Two Client Testing Approaches (Domain-Joined vs. Unjoined)
+
+You can test File Server and FTP Server access from your client computer using two different methods:
+
+| Approach | Client Setup | Experience | Enterprise Status |
+|:---|:---|:---|:---|
+| **Approach 1 ⭐ (RECOMMENDED)** | **Client Joined to Domain (`e6.local`)** | **Single Sign-On (SSO):** Automatically logs in with domain credentials. No login popups! | **Industry Standard & Recommended for Class.** |
+| **Approach 2** | **Client NOT Joined to Domain (Workgroup)** | Windows pops up a credentials window asking for `E6\Administrator` every time. | Alternative / Quick Test method. |
+
+> **Why Approach 1 (Domain Joined) is RECOMMENDED:**
+> 1. **Single Sign-On (SSO):** Users log in once at Windows startup (`E6\John`). Access to network shares (`\\server1.e6.local\CompanyData`) is instant without re-typing passwords.
+> 2. **Course Grading:** Professors grade whether client machines are properly integrated into Active Directory.
+> 3. **NTFS Permission Testing:** Allows testing different domain user accounts (`E6\HR_User` vs `E6\Sales_User`).
+
+---
+
+### A4. Client Testing Flow for File Server (`pro-win-client`)
 
 ```
                           CLIENT TESTING FLOW
