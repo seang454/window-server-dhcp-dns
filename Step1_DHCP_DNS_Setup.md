@@ -67,9 +67,31 @@ Reserved for future       192.168.1.12 - .99      (available)
 - "Localhost" — means "myself" / "this computer"
 - When your server uses `127.0.0.1` as DNS, it asks itself for DNS answers
 
----
+### How Subnetting (/24) & IP Range is Calculated
 
-## Prerequisites
+#### 1. What does `/24` mean?
+- Subnet Mask `255.255.255.0` in CIDR notation is written as **/24**.
+- In binary: `11111111.11111111.11111111.00000000` (8 + 8 + 8 = **24 ones**).
+- The 24 ones mean the first 3 numbers (`192.168.1`) identify the **Network**.
+- The last 8 zeros allow \(2^8 = 256\) total IP addresses (`192.168.1.0` to `192.168.1.255`).
+
+#### 2. Usable IPs in a `/24` Network:
+- `192.168.1.0` = Network Address (Reserved - cannot be assigned to any device)
+- `192.168.1.255` = Broadcast Address (Reserved - used to broadcast to all devices)
+- **Usable IPs:** `192.168.1.1` to `192.168.1.254` (Total: **254 addresses**)
+
+#### 3. How We Allocated the 254 Usable IPs:
+| IP Range | Quantity | Assigned To | Why? |
+|:---|:---|:---|:---|
+| `192.168.1.1` | 1 IP | VMware NAT Gateway | Router IP (internet exit door) |
+| `192.168.1.2 - 1.9` | 8 IPs | Reserved for Network Infrastructure | Routers, Switches, Firewalls |
+| `192.168.1.10` | 1 IP | Windows Server 1 | Primary Domain Controller / DNS (Static) |
+| `192.168.1.11` | 1 IP | Windows Server 2 | Secondary Server / Failover Node (Static) |
+| `192.168.1.12 - 1.99` | 88 IPs | Reserved for Servers / Printers | Future servers needing static IPs |
+| **`192.168.1.100 - 1.200`** | **101 IPs** | **DHCP Pool (Clients)** | **Auto-assigned to Client VMs / devices** |
+| `192.168.1.201 - 1.254` | 54 IPs | Reserved for Management / VPN | Static management pool |
+
+> **Can you change 100 - 200?** YES! You can use `50 - 150` or `100 - 250`. Using `100 - 200` is simply a **best practice** so static server IPs (`.10`, `.11`) never conflict with dynamic client IPs (`.100+`).
 
 ### 1. VMware Network Setup (VMnet8)
 
