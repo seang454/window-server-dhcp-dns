@@ -72,6 +72,22 @@ When employees work from home or travel:
 
 ---
 
+## Pre-Flight Checklist Before Joining Domain
+
+Before attempting to join the domain, verify **3 essential requirements**:
+1. ✅ **Same Virtual Switch:** Both VMs must be connected to **VMnet8 (NAT)**.
+2. ✅ **Same Subnet:** Server is `192.168.1.10`, Client is `192.168.1.100`.
+3. ✅ **Client DNS points to Server:** Client's DNS must be set to `192.168.1.10`.
+
+#### The 5-Second Test (Run on Client VM):
+Open Command Prompt on **`pro-win-client`** and run:
+```cmd
+nslookup e6.local
+```
+If it resolves `e6.local` → `192.168.1.10`, you are 100% ready to join!
+
+---
+
 ## How to Make Your Client Computer Appear in Active Directory
 
 Perform these steps on your **Client VM (`pro-win-client`)**:

@@ -698,6 +698,64 @@ On your **Windows Server**, verify the DHCP lease:
 
 ---
 
+## Part D: Joining Client VM to Active Directory (`e6.local`)
+
+### Difference Between DHCP and Active Directory Membership
+
+| Action | What it does | Where the computer appears |
+|:---|:---|:---|
+| **1. Request DHCP IP** (`ipconfig /renew`) | Gives the client a temporary network address (`192.168.1.100`). | Appears in **DHCP Manager → Address Leases** |
+| **2. Join Domain** (System Settings → Domain Join) | Registers the client computer into the Active Directory database as an official domain member. | Appears in **Active Directory Users and Computers → Computers** |
+
+#### Real-World Analogy:
+- **Getting a DHCP IP** is like getting a **parking ticket at a parking lot**. It lets the computer stand on the network, but the company doesn't know who owns it yet.
+- **Joining the Domain** is like **signing a job contract**. It registers the computer as an official device managed by your Windows Server.
+
+### Pre-Flight Checklist Before Joining Domain
+
+Before attempting to join the domain, verify **3 essential requirements**:
+1. ✅ **Same Virtual Switch:** Both VMs must be connected to **VMnet8 (NAT)**.
+2. ✅ **Same Subnet:** Server is `192.168.1.10`, Client is `192.168.1.100`.
+3. ✅ **Client DNS points to Server:** Client's DNS must be set to `192.168.1.10`.
+
+#### The 5-Second Test (Run on Client VM):
+Open Command Prompt on **`pro-win-client`** and run:
+```cmd
+nslookup e6.local
+```
+If it resolves `e6.local` → `192.168.1.10`, you are 100% ready to join!
+
+---
+
+### Step-by-Step Instructions to Join Client VM to Domain
+
+Perform these steps on your **Client VM (`pro-win-client`)**:
+
+1. Press `Win + R` → type `sysdm.cpl` → press **Enter** *(opens System Properties)*.
+2. Under the **Computer Name** tab, click **Change...**
+3. Under *Member of*, select **Domain** → type:
+   ```text
+   e6.local
+   ```
+4. Click **OK**.
+5. When prompted for credentials, type:
+   - **Username:** `E6\Administrator` (or `Administrator`)
+   - **Password:** *(your domain admin password)*
+6. Click **OK**. You will see a popup: *"Welcome to the e6.local domain!"*
+7. Click **OK** and **Restart** the Client VM.
+
+---
+
+### Verify Active Directory Membership on Windows Server
+
+After restarting the Client VM:
+
+1. Open **Active Directory Users and Computers** on `pro-win-server` (`Server Manager → Tools → Active Directory Users and Computers`).
+2. Expand `e6.local` → click **Computers**.
+3. 🎉 You will now see your client computer (`CLIENT`) listed inside Active Directory!
+
+---
+
 ## Summary
 
 | Service | Status | What It Does |
