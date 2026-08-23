@@ -293,6 +293,11 @@ An FTP (File Transfer Protocol) Server is a server role running under IIS (Inter
   - IP Address: `All Unassigned` (or `192.168.1.10`)
   - Port: `21`
   - SSL: Select **No SSL** → click **Next**.
+
+> **Why do we select "No SSL" for our lab?**
+> - **SSL Requires a Digital Certificate:** SSL/TLS encrypts network traffic, but it requires an SSL Certificate issued by a Certificate Authority (CA).
+> - **Lab Convenience:** We haven't installed Active Directory Certificate Services (AD CS) yet. Selecting **No SSL** allows plain FTP (Port 21) to work immediately without needing complex certificate setup.
+> - **Enterprise Production Note:** Real-world companies issue SSL certificates and require FTPS (Port 990) or SFTP (Port 22) to encrypt passwords and file transfers.
 * **Authentication and Authorization Information:**
   - Authentication: Check ✅ **Basic**
   - Allow access to: Select **All users**
