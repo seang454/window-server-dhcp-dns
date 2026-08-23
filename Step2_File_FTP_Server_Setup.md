@@ -235,12 +235,14 @@ An FTP (File Transfer Protocol) Server is a server role running under IIS (Inter
 
 1. Open **Server Manager** on `pro-win-server`.
 2. Click **Manage → Add Roles and Features**.
-3. Click **Next** until you reach **Server Roles**.
-4. Scroll down and expand **Web Server (IIS)** → expand **FTP Server**:
-   - Check ✅ **FTP Service**
-   - Check ✅ **FTP Extensibility**
-5. Click **Next → Next → Install**.
-6. Wait for installation to complete → click **Close**.
+3. Click **Next** until you reach **Server Roles**:
+   - Check ✅ **Web Server (IIS)** (click **Add Features** on popup).
+4. Click **Next** until **Role Services** screen:
+   - Expand **Security** → check ✅ **Basic Authentication** (required for AD credentials login).
+   - Expand **FTP Server** → check ✅ **FTP Service** and ✅ **FTP Extensibility**.
+   - Expand **Management Tools** → check ✅ **IIS Management Console**.
+5. Click **Next → Install**.
+6. Wait for installation to complete ("Installation succeeded") → click **Close**.
 
 ---
 
