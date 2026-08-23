@@ -264,6 +264,14 @@ An FTP (File Transfer Protocol) Server is a server role running under IIS (Inter
 
 ### B2. Create FTP Folder & Configure FTP Site
 
+> **Understanding the IIS Manager Dashboard (Your Screenshot):**
+> When you open IIS Manager, you see the global control panel organized into 3 feature sections:
+> - **FTP Features (Top):** Controls FTP settings globally (Authentication, Authorization Rules, SSL, User Isolation, Firewall).
+> - **IIS Features (Middle):** Controls Web settings globally (SSL Certificates, HTTP Headers, Error Pages, MIME types).
+> - **Management (Bottom):** Controls IIS server-wide configurations.
+
+1. Open **File Explorer** on Server → navigate to `C:\inetpub\`.
+
 > **Deep-Dive: Why does `C:\inetpub\` have a `wwwroot` folder?**
 > - **`www`** = World Wide Web \| **`root`** = The starting top-level directory.
 > - **Default Website Path:** `C:\inetpub\wwwroot` is the default folder for **Web Server (IIS)**.
