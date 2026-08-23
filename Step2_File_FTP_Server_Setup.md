@@ -362,32 +362,41 @@ netsh advfirewall firewall add rule name="Allow Port 21 All Programs" dir=in act
    [6. File Downloaded!] ◄── [5. get welcome.txt] ◄── [4. Type dir to list]
 ```
 
-#### Test 1: Access FTP via Command Prompt
-1. Open **Command Prompt** on `pro-win-client`.
+#### Test 1: Access FTP via Command Prompt (Verified Success ✅)
+1. Open **Command Prompt** or **PowerShell** on `pro-win-client`.
 2. Connect to FTP:
    ```cmd
    ftp server1.e6.local
    ```
-3. When prompted for User:
-   ```text
-   Administrator
-   ```
-4. When prompted for Password:
-   ```text
-   (your domain admin password)
-   ```
-   *(Note: Password characters will not show while typing)*
-5. You will see: `230 User logged in, proceed.`
-6. List files:
+3. When prompted for `User (server1.e6.local:(none)):`:
+   - Type: `E6\Administrator` → press **Enter**.
+   - *(Note: You MUST include the domain prefix `E6\` so IIS authenticates against Active Directory).*
+4. When prompted for `Password:`:
+   - Type: `(your domain admin password)` → press **Enter**.
+   - *(Note: Password characters are hidden as you type for security).*
+
+#### Verified Successful Output:
+```text
+PS C:\Users\s.pengseang> ftp server1.e6.local
+Connected to server1.e6.local.
+220 Microsoft FTP Service
+User (server1.e6.local:(none)): E6\Administrator
+331 Password required
+Password:
+230 User logged in.
+ftp>
+```
+
+5. List files:
    ```cmd
    dir
    ```
    *(You will see `welcome.txt` listed!)*
-7. Download test file:
+6. Download test file:
    ```cmd
    get welcome.txt
    ```
-8. Type `quit` to exit.
+7. Type `quit` to exit.
 
 ---
 
@@ -412,9 +421,15 @@ netsh advfirewall firewall add rule name="Allow Port 21 All Programs" dir=in act
 - **Cause:** DNS resolution issue.
 - **Fix:** Run `nslookup server1.e6.local` on client. If it fails, verify client's DNS is set to `192.168.1.10`.
 
-### 3. Error: FTP connection times out on Port 21
+### 3. Error: "Connection closed by remote host" right after typing username
+- **Cause 1:** Basic Authentication is Disabled on the FTP site.
+  - **Fix:** In IIS Manager → click `LabFTP` → double-click **FTP Authentication** → ensure **Basic Authentication** is set to **Enabled**.
+- **Cause 2:** No Authorization Rule configured.
+  - **Fix:** In IIS Manager → click `LabFTP` → double-click **FTP Authorization Rules** → ensure an Allow rule exists for **All Users** (Read & Write).
+
+### 4. Error: FTP connection times out on Port 21
 - **Cause:** Windows Firewall blocking FTP port.
-- **Fix:** On Server PowerShell (Admin), run `Enable-NetFirewallRule -DisplayGroup "FTP Server"`.
+- **Fix:** On Server CMD (Admin), run `netsh advfirewall firewall add rule name="Allow Port 21 All Programs" dir=in action=allow protocol=TCP localport=21`.
 
 ---
 
