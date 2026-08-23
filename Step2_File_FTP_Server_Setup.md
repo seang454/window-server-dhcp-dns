@@ -215,6 +215,22 @@ You can test File Server and FTP Server access from your client computer using t
 #### 1. What is an FTP Server?
 An FTP (File Transfer Protocol) Server is a server role running under IIS (Internet Information Services) that enables clients to **transfer, upload, download, and manage files** over a network using TCP Port 21 (Control) and Port 20 (Data).
 
+> **Why is FTP Server located under "Web Server (IIS)" in Windows Server?**
+> Microsoft groups FTP under **IIS (Internet Information Services)** because:
+> 1. **Unified Management:** FTP sites and Web sites share the same administrative tool (**IIS Manager**).
+> 2. **Shared Security & Logging:** FTP uses the same authentication engine, SSL certificates, and W3C logging mechanism as IIS Web Server.
+> 3. **Website Content Deployment:** Web developers use FTP to upload HTML/web application files directly to Web Server root folders (`C:\inetpub\wwwroot`). Grouping them together allows IIS to manage web publishing and file uploads seamlessly.
+
+#### Web Server (IIS) vs. FTP Server Comparison:
+
+| Feature | Web Server (IIS) | FTP Server (IIS FTP) |
+|:---|:---|:---|
+| **Primary Role** | Hosts & serves **Websites and Web Applications**. | Manages **File Uploading, Downloading & Storage**. |
+| **Protocols & Ports** | **HTTP** (Port 80) / **HTTPS** (Port 443) | **FTP** (Port 21 Control, Port 20 Data) |
+| **How Clients Access** | Web Browsers (`http://server1.e6.local`) | File Explorer, CMD `ftp`, FileZilla (`ftp://server1.e6.local`) |
+| **Default Storage Path**| `C:\inetpub\wwwroot` | `C:\inetpub\ftproot` |
+| **Real-World Analogy** | **Storefront Window** (Visitors browse and view web pages). | **Warehouse Loading Dock** (Workers deliver or retrieve file packages). |
+
 #### 2. What is it used for?
 - **Cross-Platform File Transfers:** Allows Mac, Linux, Windows, and mobile devices to upload/download files to the server.
 - **Large File Transfers:** Ideal for transferring large software installers, backups, or media archives where standard SMB might time out.
