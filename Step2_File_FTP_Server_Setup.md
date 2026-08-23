@@ -277,6 +277,10 @@ An FTP (File Transfer Protocol) Server is a server role running under IIS (Inter
 
 ### B3. Enable FTP Firewall Rules
 
+> **Why do we run this firewall command?**
+> - **Windows Firewall Blocks Port 21 by Default:** To protect the server, Windows Firewall blocks all incoming traffic on Port 21 until explicitly allowed.
+> - **What `Enable-NetFirewallRule` does:** It enables the built-in firewall exception for FTP traffic so external and local clients can reach the FTP Server on Port 21 without connection timeouts!
+
 Open **PowerShell as Administrator** on `pro-win-server` and run:
 
 ```powershell
