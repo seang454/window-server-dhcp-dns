@@ -248,6 +248,11 @@ An FTP (File Transfer Protocol) Server is a server role running under IIS (Inter
 
 ### B2. Create FTP Folder & Configure FTP Site
 
+> **Why do we perform these steps?**
+> 1. **`C:\inetpub\ftproot`:** An FTP Server requires a physical folder on the hard drive to hold uploaded/downloaded files.
+> 2. **`welcome.txt`:** This is a test file. When you connect from the client and run `dir`, seeing `welcome.txt` proves FTP file listing works!
+> 3. **Add FTP Site in IIS:** Installing the FTP role only installs the software. Adding the FTP site binds Port 21 to `C:\inetpub\ftproot` so Windows knows where to direct incoming FTP clients.
+
 1. Open **File Explorer** on Server → navigate to `C:\inetpub\`.
 2. Create a folder named `ftproot` (Path: `C:\inetpub\ftproot`).
 3. Inside `C:\inetpub\ftproot`, create a file named `welcome.txt` with text *"Welcome to Lab FTP Server!"*.
