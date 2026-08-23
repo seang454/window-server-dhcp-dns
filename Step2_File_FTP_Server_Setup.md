@@ -315,17 +315,39 @@ An FTP (File Transfer Protocol) Server is a server role running under IIS (Inter
 
 ---
 
-### B3. Enable FTP Firewall Rules
+### B3. Enable FTP Firewall Rules (2 Methods Available)
 
-> **Why do we run this firewall command?**
+> **Why do we open Firewall rules?**
 > - **Windows Firewall Blocks Port 21 by Default:** To protect the server, Windows Firewall blocks all incoming traffic on Port 21 until explicitly allowed.
-> - **What `Enable-NetFirewallRule` does:** It enables the built-in firewall exception for FTP traffic so external and local clients can reach the FTP Server on Port 21 without connection timeouts!
 
-Open **PowerShell as Administrator** on `pro-win-server` and run:
+---
 
-```powershell
-Enable-NetFirewallRule -DisplayGroup "FTP Server"
+#### Method 1: Using the Windows Firewall UI Wizard (`wf.msc`) ⭐ **(GUI Method)**
+
+1. Press `Win + R` → type **`wf.msc`** → press **Enter** *(opens Windows Defender Firewall with Advanced Security)*.
+2. Click **Inbound Rules** on the left panel.
+3. On the **far-right Actions panel**, click **`New Rule...`**
+4. **Rule Type:** Select **Port** → click **Next**.
+5. **Protocol and Ports:** Select **TCP** → type **`21`** in *Specific local ports* → click **Next**.
+6. **Action:** Select **Allow the connection** → click **Next**.
+7. **Profile:** Check all 3 (✅ **Domain**, ✅ **Private**, ✅ **Public**) → click **Next**.
+8. **Name:** Type `Allow FTP Port 21` → click **Finish** (icon turns green 🟢).
+
+---
+
+#### Method 2: Using Command Prompt (`cmd.exe`) ⭐ **(Command Method)**
+
+Open **Command Prompt as Administrator** on `pro-win-server` and run:
+
+```cmd
+netsh advfirewall firewall add rule name="Allow Port 21 All Programs" dir=in action=allow protocol=TCP localport=21
 ```
+
+---
+
+> **Technical Note: Predefined Rules vs. Custom Port 21 Rules:**
+> - **Predefined UI Rule (`FTP Server Traffic-In`):** Restricts traffic strictly to `%windir%\System32\inetsrv\ftpsvc.exe`. In Windows Server 2022, IIS FTP runs inside `svchost.exe`, so the executable path filter fails and Windows drops remote packets.
+> - **Custom Port 21 Rule (UI or CMD):** Opens **TCP Port 21 for ALL programs** regardless of executable name, ensuring remote clients connect reliably every time.
 
 ---
 
