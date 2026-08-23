@@ -4,6 +4,21 @@
 **Domain: e6.local**
 **Network: 192.168.1.0/24**
 
+## Dual Setup Flow Overview (Local vs. Public Configuration)
+
+Every service in this guide has two setup flows:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          DUAL CONFIGURATION FLOW                            │
+│                                                                             │
+│  1. LOCAL SETUP FLOW (Internal LAN)   2. PUBLIC INTEGRATION FLOW (Internet) │
+│  - Static IP: 192.168.1.10            - DNS Forwarder: 8.8.8.8              │
+│  - Domain Zone: e6.local              - VMware NAT Router: 192.168.1.1     │
+│  - DHCP Scope: .100 - .200            - Public Internet Access Routing      │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
 ---
 
 ## Network Info

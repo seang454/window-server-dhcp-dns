@@ -85,6 +85,10 @@ A File Server is a central server role dedicated to storing, managing, and shari
 - ⚡ **High-Speed LAN Access:** Allows fast file sharing directly over the local network (`\\server1.e6.local\CompanyData`) with `<1ms` latency.
 - 👥 **Active Directory Integration:** Uses domain accounts (`e6\Domain Users`) for single sign-on authentication without typing passwords repeatedly.
 
+#### 4. Setup Flow: Local vs. Public Configuration
+- 🏠 **Local Setup Flow:** Create folder `C:\Shares\CompanyData` → Share Folder → Set NTFS Permissions `e6\Domain Users` → Access locally from Client VM via `\\server1.e6.local\CompanyData`.
+- 🌐 **Public Access Flow (Best Practice = VPN):** SMB Port 445 is **never** directly opened on public IP for security. Public/Remote users connect via **VPN Tunnel (Port 443)** first, which authenticates them into the Local LAN to access `\\server1.e6.local\CompanyData` securely.
+
 ### A1. Create Folder Structure on Windows Server (`pro-win-server`)
 
 1. Open **File Explorer** on your Windows Server.
@@ -222,6 +226,10 @@ An FTP (File Transfer Protocol) Server is a server role running under IIS (Inter
 - ⚙️ **Script Automation:** Easily scriptable via command line for unattended file uploads and downloads.
 - 🔒 **Flexible Authentication:** Supports both Anonymous (public download) and Basic Active Directory Authentication (secure login).
 - 📁 **Dedicated Directory Scoping:** Restricts FTP users to specific subfolders (`C:\inetpub\ftproot`) without exposing the rest of the server filesystem.
+
+#### 4. Setup Flow: Local vs. Public Configuration
+- 🏠 **Local Setup Flow:** Install IIS FTP → Create Site `LabFTP` on `C:\inetpub\ftproot` → Enable Firewall Rule `FTP Server` → Access locally from Client VM via `ftp://server1.e6.local` (Port 21).
+- 🌐 **Public Access Flow (Port Forwarding / FTPS):** Configure VMware NAT Port Forwarding (Host Port `2121` ──► Virtual Machine `192.168.1.10:21`) → Access from external Host PC via `ftp localhost 2121` (or use FTPS over SSL Port 990 for encrypted enterprise file transfers).
 
 ### B1. Install FTP Server Role via Server Manager
 
