@@ -304,6 +304,15 @@ An FTP (File Transfer Protocol) Server is a server role running under IIS (Inter
   - Permissions: Check ✅ **Read** and ✅ **Write**
 * Click **Finish**.
 
+> **Basic Authentication vs. Anonymous Authentication:**
+> 
+> | Authentication Type | Credentials Required | Who gets access? | Typical Use Case |
+> |:---|:---|:---|:---|
+> | **Basic Authentication** | Username & Password (e.g., `E6\Administrator`) | Authorized Active Directory Accounts only | Private company file uploads, employee folders |
+> | **Anonymous Authentication** | None (Log in as `anonymous` without password) | Anyone on the network / public | Public software downloads, driver downloads |
+> 
+> *For our lab, we select **Basic Authentication** so users must log in with domain credentials.*
+
 ---
 
 ### B3. Enable FTP Firewall Rules
