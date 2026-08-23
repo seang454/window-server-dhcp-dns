@@ -24,9 +24,14 @@ Internet Information Services (IIS) is Microsoft's enterprise web server softwar
 - **Security & SSL/TLS Management:** Native support for HTTPS encryption, SSL certificates, Request Filtering, and IP Restrictions.
 - **Centralized Management:** Managed visually through **IIS Manager** (`inetmgr`).
 
----
+### 4. Microsoft IIS vs. Nginx Web Server Comparison
 
-## 🌐 Network Protocol Breakdown: HTTP vs. HTTPS
+| Feature | 🏢 Microsoft IIS (Internet Information Services) | ⚡ Nginx Web Server / Reverse Proxy |
+|:---|:---|:---|
+| **OS Native Environment** | Native to **Windows Server** (built-in role). | Native to **Linux** (Ubuntu, RedHat, Fedora). |
+| **Active Directory Integration** | Native Single Sign-On (SSO), Kerberos, and AD Domain user authentication out-of-the-box. | Requires LDAP / RADIUS modules. |
+| **Primary Enterprise Use Case** | Corporate intranet web portals, ASP.NET applications, IIS Web & FTP file servers. | High-concurrency Reverse Proxy, Load Balancer, SSL Termination, Microservices API Gateway. |
+| **Installation Location** | Installed on **Windows Server VM (`pro-win-server`)**. | Installed on Linux VM or as Reverse Proxy in front of Web Servers. |
 
 | Feature | 🌐 HTTP (Hypertext Transfer Protocol) | 🔒 HTTPS (HTTP Secure) |
 |:---|:---|:---|
@@ -187,17 +192,52 @@ netsh advfirewall firewall add rule name="Allow World Wide Web HTTP Port 80" dir
 - **Scope:** Accessible only by devices on `192.168.1.0/24` LAN.
 - **Authentication:** Integrated Windows Authentication (AD Single Sign-On).
 
-### 🌐 2. Public Access Simulation (VMware NAT Port Forwarding)
-- **VMware Host Port Mapping:** Host Port **`8080`** ──► Server VM `192.168.1.10:80`
-- **Firewall Rule on Host PC:** `netsh advfirewall firewall add rule name="Allow Web Port 8080" dir=in action=allow protocol=TCP localport=8080`
-- **Public URL (ngrok / Cloud / Public IP):** `ngrok http 8080` → Generates `https://xxxx.ngrok-free.app`
-- **Access from Anywhere:** Anyone in the world on any phone/computer can open `https://xxxx.ngrok-free.app` to see your IIS website!
+### 🌐 2. Public Access Simulation (VMware NAT Port Forwarding & ngrok)
+
+#### Step 1: Configure VMware NAT Port Forwarding (Host 8080 ──► VM 80)
+1. On your **Physical Laptop**, open **VMware Workstation**.
+2. Click **Edit → Virtual Network Editor** → click **Change Settings** (Admin prompt).
+3. Select **VMnet8 (NAT)** → click **NAT Settings...**
+4. Click **Add...** and fill in:
+   - **Host Port:** `8080`
+   - **Type:** `TCP`
+   - **Virtual machine IP address:** `192.168.1.10`
+   - **Virtual machine port:** `80`
+   - **Description:** `Public Web IIS`
+5. Click **OK → Apply → OK**.
+
+#### Step 2: Open Port 8080 on Physical Laptop Firewall
+Open Command Prompt as Administrator on your physical laptop (`C:\Users\M>`) and run:
+```cmd
+netsh advfirewall firewall add rule name="Allow VMware Public Web Port 8080" dir=in action=allow protocol=TCP localport=8080
+```
+
+#### Step 3: Launch ngrok HTTP Tunnel on Physical Laptop
+Open Command Prompt on your physical laptop (`C:\Users\M>`) and run:
+```cmd
+ngrok http 127.0.0.1:8080
+```
+
+#### Step 4: Access Website from Any Device Worldwide!
+Anyone on any mobile phone, Fedora laptop, or remote computer opens the generated link:
+```text
+https://xxxx.ngrok-free.app
+```
+🎉 **Result:** The custom **E6 Enterprise Web Portal** homepage displays on any device anywhere in the world!
 
 ---
 
 ## 🛠️ Troubleshooting Guide for Step 3
 
-### 1. Error: "HTTP 404 - File Not Found"
+### 1. Error: Default blue IIS Welcome Page (`iisstart.htm`) displays instead of custom website
+- **Cause:** `index.html` does not exist in `C:\inetpub\wwwroot\`, or it was saved with a hidden `.txt` extension (`index.html.txt`). IIS skips missing files and serves `iisstart.htm`.
+- **Fix:** 
+  1. Open File Explorer on Server → go to `C:\inetpub\wwwroot\`.
+  2. Click **View → Show → File name extensions** (ensure `.txt` extensions are visible).
+  3. Rename `index.html.txt` to **`index.html`**.
+  4. In browser, press **`Ctrl + F5`** (Hard Refresh) to reload!
+
+### 2. Error: "HTTP 404 - File Not Found"
 - **Cause:** `index.html` is missing or saved with wrong extension (`index.html.txt`).
 - **Fix:** In `C:\inetpub\wwwroot\`, ensure file extensions are shown (*File Explorer → View → Show → File name extensions*). Rename to `index.html`.
 
