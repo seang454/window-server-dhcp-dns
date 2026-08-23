@@ -195,9 +195,22 @@ Set-DnsClientServerAddress -InterfaceAlias "Ethernet0" -ServerAddresses 8.8.8.8,
 
 ## Part A: Install & Configure DNS Server
 
-### What is a DNS Server?
+### DNS Server Deep-Dive
 
-DNS translates names to IP addresses (like a phone book):
+#### 1. What is a DNS Server?
+DNS (Domain Name System) is the **phonebook of the computer network**. Computers communicate using numerical IP addresses (like `192.168.1.10`), but humans remember names (like `server1.e6.local` or `google.com`). A DNS Server translates human-friendly domain names into computer-friendly IP addresses.
+
+#### 2. What is it used for?
+- **Internal Domain Name Resolution:** Translates internal company names (`server1.e6.local`, `mail.e6.local`) to local server IPs.
+- **Active Directory Integration:** Locates Domain Controllers, Kerberos authentication services, and LDAP directory services for domain-joined client computers.
+- **Internet Name Resolution:** Uses DNS Forwarders (`8.8.8.8`) to resolve public domain names (`google.com`, `microsoft.com`) for internal network users.
+
+#### 3. Key Advantages & Benefits:
+- ⚡ **User Convenience:** Users don't need to memorize complex numerical IP addresses.
+- 🔒 **Active Directory Necessity:** Active Directory cannot function without DNS; client computers use DNS to locate authentication servers.
+- 🛠️ **Dynamic Updates:** Automatically updates DNS records when new computers join the domain or change IP addresses via DHCP.
+- 🌐 **Centralized Control:** Allows administrators to manage all internal domain names and redirect network traffic from a single server console.
+
 ```
 server1.e6.local  →  192.168.1.10  (your DNS answers this)
 google.com        →  142.250.x.x   (Google's DNS answers this via forwarder)
@@ -409,13 +422,24 @@ nslookup google.com
 
 ## Part B: Install & Configure DHCP Server
 
-### What is a DHCP Server?
+### DHCP Server Deep-Dive
 
-DHCP automatically gives IP addresses to devices when they connect to your network:
-```
-Without DHCP: You manually type IP, subnet, gateway, DNS on every device
-With DHCP:    Devices get everything automatically when they connect
-```
+#### 1. What is a DHCP Server?
+DHCP (Dynamic Host Configuration Protocol) is a network management protocol that **automatically assigns IP addresses and network configuration settings** to devices when they connect to a network.
+
+#### 2. What is it used for?
+- **Automating Client Network Configuration:** Automatically hands out 4 essential settings to clients:
+  1. IP Address (`192.168.1.100 - .200`)
+  2. Subnet Mask (`255.255.255.0`)
+  3. Default Gateway (`192.168.1.1` - VMware NAT router exit door)
+  4. DNS Server (`192.168.1.10` - Windows Server DNS)
+- **IP Address Pool Management:** Recycles and reassigns unused IP addresses when devices disconnect or leases expire.
+
+#### 3. Key Advantages & Benefits:
+- 🚀 **Zero Manual Configuration:** Eliminates the need for network admins to manually configure IP settings on hundreds of employee laptops/phones.
+- 🛡️ **No IP Conflicts:** Prevents duplicate IP addresses on the network (which causes network crashes).
+- 📍 **Centralized Network Administration:** Administrators can change Gateway or DNS settings in ONE place (DHCP Server), and all clients receive the updated settings automatically!
+- 🔄 **Efficient Address Reuse:** Uses "leases" so temporary devices don't permanently consume IP addresses.
 
 ### B1. Install the DHCP Server Role
 

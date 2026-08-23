@@ -69,6 +69,22 @@ In Active Directory, users are organized into **Security Groups** to manage fold
 
 ## Part A: File Server Setup (SMB Shared Folders)
 
+### File Server Deep-Dive
+
+#### 1. What is a File Server?
+A File Server is a central server role dedicated to storing, managing, and sharing files and folders across a network using the **SMB (Server Message Block)** protocol on TCP Port 445.
+
+#### 2. What is it used for?
+- **Centralized Company Storage:** Consolidates all company documents, project files, and media into a single secure location (`C:\Shares\CompanyData`).
+- **Departmental File Control:** Restricts sensitive departments (e.g., HR, Finance) so only authorized staff can read or edit files (`HR_Private`).
+- **Network Drive Mapping:** Automatically maps shared network folders as local drive letters (`Z:`, `H:`) on employee workstations.
+
+#### 3. Key Advantages & Benefits:
+- 🛡️ **Granular Access Control:** Combines Share Permissions + NTFS Permissions to enforce precise security per user or group.
+- 💾 **Easy Data Backup:** Backing up `C:\Shares` on the server backs up ALL company data at once (no need to back up individual employee laptops).
+- ⚡ **High-Speed LAN Access:** Allows fast file sharing directly over the local network (`\\server1.e6.local\CompanyData`) with `<1ms` latency.
+- 👥 **Active Directory Integration:** Uses domain accounts (`e6\Domain Users`) for single sign-on authentication without typing passwords repeatedly.
+
 ### A1. Create Folder Structure on Windows Server (`pro-win-server`)
 
 1. Open **File Explorer** on your Windows Server.
@@ -104,6 +120,12 @@ In Active Directory, users are organized into **Security Groups** to manage fold
    - Select `Domain Users` or `Users` → click **Remove**.
    - Ensure only `Administrators` and `SYSTEM` are listed with Full Control.
 4. Click **OK**.
+
+> **What does "Disable Inheritance" & "Convert Permissions" mean?**
+> - **Inheritance:** By default, subfolders copy (inherit) permissions from `C:\` drive. This gives `Users` read access automatically.
+> - **Why Disable Inheritance?** If inheritance is active, Windows will NOT let you delete `Users` because it's locked by the parent `C:\` drive.
+> - **Convert to Explicit Permissions:** Unlocks the permissions list so you can manually select `Users` / `Domain Users` and click **Remove**.
+> - **Result:** Only `Administrators` remain. When a regular user tries to open `HR_Private`, Windows denies access (*"Access is Denied"*).
 
 ---
 
@@ -183,6 +205,23 @@ You can test File Server and FTP Server access from your client computer using t
 ---
 
 ## Part B: FTP Server Setup (File Transfer Protocol)
+
+### FTP Server Deep-Dive
+
+#### 1. What is an FTP Server?
+An FTP (File Transfer Protocol) Server is a server role running under IIS (Internet Information Services) that enables clients to **transfer, upload, download, and manage files** over a network using TCP Port 21 (Control) and Port 20 (Data).
+
+#### 2. What is it used for?
+- **Cross-Platform File Transfers:** Allows Mac, Linux, Windows, and mobile devices to upload/download files to the server.
+- **Large File Transfers:** Ideal for transferring large software installers, backups, or media archives where standard SMB might time out.
+- **Website Content Uploads:** Used by web developers to upload website files directly to web server root directories (`C:\inetpub\ftproot`).
+- **Automated Script Transfers:** Used by automated command-line scripts (`ftp -s:script.txt`) to upload daily backups.
+
+#### 3. Key Advantages & Benefits:
+- 🌐 **Universal Platform Support:** Works across all operating systems and FTP client software (FileZilla, Cyberduck, Command Line).
+- ⚙️ **Script Automation:** Easily scriptable via command line for unattended file uploads and downloads.
+- 🔒 **Flexible Authentication:** Supports both Anonymous (public download) and Basic Active Directory Authentication (secure login).
+- 📁 **Dedicated Directory Scoping:** Restricts FTP users to specific subfolders (`C:\inetpub\ftproot`) without exposing the rest of the server filesystem.
 
 ### B1. Install FTP Server Role via Server Manager
 
