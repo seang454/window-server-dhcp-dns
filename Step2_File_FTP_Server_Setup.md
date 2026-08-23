@@ -317,6 +317,13 @@ An FTP (File Transfer Protocol) Server is a server role running under IIS (Inter
 
 ### B3. Enable FTP Firewall Rules (2 Methods Available)
 
+> **Inbound Rules vs. Outbound Rules Explained:**
+> 
+> | Rule Type | Traffic Direction | Real-World Analogy | Primary Purpose & Example |
+> |:---|:---|:---|:---|
+> | **Inbound Rules** | **Outside ──► INTO Computer** | **Front Door Security Guard** | Controls who can connect **TO** services hosted on your server (e.g. allowing clients to connect to FTP Port 21 or Web Port 80). |
+> | **Outbound Rules** | **Computer ──► OUT to Outside** | **Mailroom Inspector** | Controls what network traffic your computer is allowed to send **OUT** (e.g. allowing web browsing to Google or blocking malware call-outs). |
+
 > **Why do we open Firewall rules?**
 > - **Windows Firewall Blocks Port 21 by Default:** To protect the server, Windows Firewall blocks all incoming traffic on Port 21 until explicitly allowed.
 
@@ -384,7 +391,18 @@ User (server1.e6.local:(none)): E6\Administrator
 331 Password required
 Password:
 230 User logged in.
-ftp>
+ftp> dir
+200 PORT command successful.
+125 Data connection already open; Transfer starting.
+08-23-26  03:13AM                   26 welcome.txt
+226 Transfer complete.
+ftp: 55 bytes received in 0.00Seconds 55000.00Kbytes/sec.
+
+ftp> get welcome.txt
+200 PORT command successful.
+125 Data connection already open; Transfer starting.
+226 Transfer complete.
+ftp: 26 bytes received in 0.05Seconds 0.55Kbytes/sec.
 ```
 
 5. List files:
@@ -421,13 +439,15 @@ ftp>
 - **Cause:** DNS resolution issue.
 - **Fix:** Run `nslookup server1.e6.local` on client. If it fails, verify client's DNS is set to `192.168.1.10`.
 
-### 3. Error: "Connection closed by remote host" right after typing username
-- **Cause 1:** Basic Authentication is Disabled on the FTP site.
-  - **Fix:** In IIS Manager → click `LabFTP` → double-click **FTP Authentication** → ensure **Basic Authentication** is set to **Enabled**.
-- **Cause 2:** No Authorization Rule configured.
-  - **Fix:** In IIS Manager → click `LabFTP` → double-click **FTP Authorization Rules** → ensure an Allow rule exists for **All Users** (Read & Write).
+### 4. Error: FTP `dir` hangs at "150 Opening ASCII mode data connection" in Command Prompt
+- **Technical Cause:** Windows command-line `ftp.exe` (created in 1993 for MS-DOS) only supports **Active FTP Mode (`PORT`)**. In Active Mode, the Server initiates an *inbound* connection back to the Client VM. The Client VM's local firewall blocks this incoming connection, causing `dir` to hang.
+- **Fix 1 (Client VM CMD Admin):** Turn off Client VM Firewall temporarily for lab testing:
+  ```cmd
+  netsh advfirewall set allprofiles state off
+  ```
+- **Fix 2 (GUI Best Practice):** Open **File Explorer** on `pro-win-client` and browse to `ftp://192.168.1.10`. File Explorer uses **Passive FTP (`PASV`)** by default, which works instantly without turning off firewalls!
 
-### 4. Error: FTP connection times out on Port 21
+### 5. Error: FTP connection times out on Port 21
 - **Cause:** Windows Firewall blocking FTP port.
 - **Fix:** On Server CMD (Admin), run `netsh advfirewall firewall add rule name="Allow Port 21 All Programs" dir=in action=allow protocol=TCP localport=21`.
 

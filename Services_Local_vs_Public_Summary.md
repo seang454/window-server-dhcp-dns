@@ -27,7 +27,15 @@ This document summarizes all 14 server roles and services you will deploy, expla
 
 ## Why This Architecture is Enterprise Best Practice
 
-In large enterprise companies (banks, tech corporations, hospitals), this design follows the **Defense-in-Depth (Castle & Moat)** security model.
+In large enterprise companies (banks, tech corporations, hospitals), this design follows the ## Enterprise Public Server Hosting Architecture
+
+When a company needs to expose servers (FTP, Web, Mail, VPN) so **many people and external servers across different networks** can access them freely:
+
+| Deployment Method | How it works | Pros | Cons | Best Use Case |
+|:---|:---|:---|:---|:---|
+| **Cloud VPS (AWS / Azure / DigitalOcean)** | Server hosted in a cloud data center with a **Direct Public IPv4 Address**. | 100% Public Access globally, 99.99% uptime, no CGNAT blockage. | Monthly cloud subscription fee ($5 - $20/mo). | **Public Company Websites, Public FTP Repositories, Production Apps**. |
+| **ISP Public Static IP (On-Premises)** | ISP assigns a **Dedicated Public IPv4 Address** to company router. | Keeps data on-premises, allows unlimited internal storage. | Requires Static IP fee from ISP, router maintenance. | **Enterprise Data Centers, Internal Corporate Services**. |
+| **Home Broadband (CGNAT)** | ISP shares 1 IP among thousands (`100.64.0.0/10`). | Free with home internet. | Inbound public traffic blocked by ISP CGNAT across networks. | **Local Lab Testing & Learning**. | security model.
 
 ```
 🌐 PUBLIC INTERNET  ──►  [ Firewall / DMZ ]  ──►  🔒 INTERNAL LOCAL LAN
@@ -106,6 +114,43 @@ Perform these steps on your **Client VM (`pro-win-client`)**:
 7. Click **OK** and **Restart** the Client VM.
 
 ---
+
+## Master Architecture Summary: Remote Internet Access to VMware FTP Server
+
+```
+                          REMOTE INTERNET ACCESS ARCHITECTURE
+                          
+ [ Remote Users / Fedora on 4G ] 
+               │
+               ▼  (Encrypted Tunnel / Public URL)
+ ┌───────────────────────────────────────────┐
+ │ Recommended Tools:                        │
+ │ 1. Tailscale (Private Mesh VPN for Users) │
+ │ 2. ngrok (Public URL for Anyone)          │
+ └─────────────────────┬─────────────────────┘
+                       │
+                       ▼  (Physical Host PC)
+ ┌───────────────────────────────────────────┐
+ │ Windows 11 Laptop (VMware Workstation)    │
+ └─────────────────────┬─────────────────────┘
+                       │  (VMnet8 Virtual Switch)
+                       ▼
+ ┌───────────────────────────────────────────┐
+ │ Windows Server VM (192.168.1.10)          │
+ │ Services: AD DS, DNS, DHCP, IIS & FTP     │
+ └───────────────────────────────────────────┘
+```
+
+| Use Case | Best Tool to Use | Setup Time | Cost | How Remote Users Access |
+|:---|:---|:---:|:---:|:---|
+| **Secure access for remote laptops/users** | **Tailscale Mesh VPN** ⭐ | 2 Mins | Free | `ftp://<TAILSCALE_IP>:2121` |
+| **Public access for anyone on Internet** | **ngrok TCP Tunnel** | 1 Min | Free | `ftp://4.tcp.ngrok.io:12345` |
+| **Permanent 24/7 Cloud Server** | **Oracle Always Free VPS** | 10 Mins | Free | `ftp://<DIRECT_PUBLIC_IP>` |
+
+---
+
+**Document Maintained by:** System Administrator & Antigravity Agent  
+**Last Updated:** August 2026
 
 ## Verify Active Directory Membership on Windows Server
 

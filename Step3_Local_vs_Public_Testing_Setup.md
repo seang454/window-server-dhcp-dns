@@ -14,9 +14,14 @@ In network engineering, servers are accessed in two ways:
 
 This guide provides step-by-step instructions to configure and test **BOTH** Local and Public access for Web (IIS) and FTP servers.
 
----
+## IP Address Breakdown Matrix
 
-## Architecture Diagram
+| Machine / Device | Type of IP Address | Example IP Value | Scope & Function |
+|:---|:---|:---|:---|
+| 🖥️ **Windows Server VM** | **Private VM IP** | `192.168.1.10` | Lives inside VMware `VMnet8` internal virtual network. Hosts AD, DNS, DHCP, IIS & FTP services. |
+| 💻 **Physical Laptop (Host)** | **Private LAN IP** | `192.168.100.4` | Lives on Home Wi-Fi LAN. Runs VMware Workstation and receives Port Forwarded traffic from Router. |
+| 🌐 **Home Router WAN** | **Public / CGNAT IP** | `203.144.76.136` | Assigned by ISP. The single public IP address representing your entire house on the global Internet. |
+| 🐧 **Fedora Machine (4G)** | **Mobile Data IP** | `10.x.x.x` (Cellular) | Independent machine on external 4G/5G mobile network trying to access your server from outside. |
 
 ```
                         LOCAL ACCESS (Internal LAN)
@@ -33,6 +38,164 @@ This guide provides step-by-step instructions to configure and test **BOTH** Loc
    │ Internet User)    │                          │ Host 8080 ──► .10:80
    └───────────────────┘                          └───────────────────┘
 ```
+
+## Part B: Public Internet Access Setup (Method B - True Public Test)
+
+To allow anyone anywhere in the world to access your FTP server over the Internet, traffic must pass through 3 layers:
+
+```
+ [ External Device (4G/5G) ]
+             │
+             ▼  Public IP:2121
+ ┌───────────────────────────────┐
+ │ 1. Home Wi-Fi Router (NAT)    │  Forward Port 2121 ──► Laptop IP
+ └───────────┬───────────────────┘
+             │
+             ▼  Laptop IP:2121
+ ┌───────────────────────────────┐
+ │ 2. Laptop Firewall & VMware   │  Forward Port 2121 ──► VM 192.168.1.10:21
+ └───────────┬───────────────────┘
+             │
+             ▼  VM IP:21
+ ┌───────────────────────────────┐
+ │ 3. Windows Server (FTP Role)  │  Serves welcome.txt to client
+ └───────────────────┘
+```
+
+---
+
+### 100% Windows GUI Step-by-Step Implementation Guide (Method B):
+
+#### Step 1: Configure VMware NAT Port Forwarding (VMware UI)
+1. On Physical Laptop, open **VMware Workstation**.
+2. Click menu bar: **Edit → Virtual Network Editor...**
+3. Click **Change Settings** button *(click Yes on Windows UAC prompt)*.
+4. Select **VMnet8 (NAT)** row → click **NAT Settings...** button.
+5. Click **Add...** button:
+   - **Host Port:** `2121`
+   - **Type:** `TCP`
+   - **Virtual machine IP address:** `192.168.1.10`
+   - **Virtual machine port:** `21`
+   - **Description:** `Public FTP`
+6. Click **OK → Apply → OK**.
+
+#### Step 2: Open Port 2121 on Laptop Firewall (Windows Defender Firewall UI)
+1. Press `Win + R` → type **`wf.msc`** → press **Enter** *(opens Windows Defender Firewall with Advanced Security)*.
+2. Click **Inbound Rules** on the left panel.
+3. On the **far-right Actions panel**, click **`New Rule...`**
+4. **Rule Type:** Select **Port** → click **Next**.
+5. **Protocol and Ports:** Select **TCP** → type **`2121`** in *Specific local ports* → click **Next**.
+6. **Action:** Select **Allow the connection** → click **Next**.
+7. **Profile:** Check all 3 (✅ **Domain**, ✅ **Private**, ✅ **Public**) → click **Next**.
+8. **Name:** Type `Allow VMware Public FTP Port 2121` → click **Finish** (icon turns green 🟢).
+
+#### Step 3: Find Laptop Wi-Fi IP Address (Windows Settings UI)
+1. Click the **Wi-Fi / Network Icon** on your Windows Taskbar (near the clock).
+2. Click **Properties** (or open **Windows Settings → Network & internet → Wi-Fi**).
+3. Scroll down to the bottom properties section.
+4. Locate **IPv4 address** (e.g., `192.168.1.50` or `192.168.0.50`).
+
+#### Step 4: Configure Port Forwarding on Home Router (Web Browser UI)
+1. Open Google Chrome or Microsoft Edge on your laptop.
+2. Type router gateway address: `192.168.1.1` (or `192.168.0.1`) → press **Enter**.
+3. Log into router admin panel (credentials on sticker on bottom of router).
+4. Click **Advanced → Forward Rules → IPv4 Port Mapping**.
+5. Click **New**:
+   - **Enable Port Mapping:** Check ✅
+   - **Mapping Name:** `Public_FTP`
+   - **Internal Host:** *(Your Laptop Wi-Fi IP from Step 3)*
+   - **External Port:** `2121`
+   - **Internal Port:** `2121`
+   - **Protocol:** `TCP`
+6. Click **Apply**.
+
+#### Step 5: Find Public IP & Test from Mobile Phone (UI)
+1. Open browser on laptop → search Google for *"what is my ip"* → copy your **Public IP** (e.g. `203.144.x.x`).
+2. Disconnect mobile phone from home Wi-Fi *(enable 4G/5G mobile data)*.
+3. Open phone browser or FTP App → type: `ftp://<YOUR_PUBLIC_IP>:2121`
+4. Log in with `E6\Administrator` and your password!
+
+## Complete ngrok FTP Packet Flow Diagram & Trace
+
+```
+                         COMPLETE NGROK FTP PACKET FLOW
+                         
+  [ External User (Fedora / Mobile 4G) ]
+                    │
+                    ▼  1. Request sent over Public Internet: 0.tcp.ap.ngrok.io:26238
+  🌐 ngrok Global Edge Server (Cloud Data Center)
+                    │
+                    ▼  2. Encrypted Tunnel to ngrok agent process
+  💻 Physical Laptop Host (listening on localhost:2121)
+                    │
+                    ▼  3. VMware NAT Port Forwarding (Host 2121 ──► VM 21)
+  🔄 VMware Virtual Switch (VMnet8)
+                    │
+                    ▼  4. Inbound TCP Port 21
+  🖥️ Windows Server VM (192.168.1.10:21)
+                    │
+                    ▼  5. IIS FTP Server reads C:\inetpub\ftproot\welcome.txt
+  🎉 Response travels back through tunnel to External Client!
+```
+
+### Step-by-Step Packet Journey:
+1. **Client Request:** Remote user on Fedora or phone types `curl ftp://0.tcp.ap.ngrok.io:26238/welcome.txt -u "E6\Administrator"`.
+2. **ngrok Cloud Edge:** ngrok's public data center receives traffic on `0.tcp.ap.ngrok.io:26238` and routes it into your private ngrok tunnel.
+3. **Physical Laptop Host:** The `ngrok.exe` background process on your physical laptop receives the packet and hands it off to `localhost:2121`.
+4. **VMware NAT Engine:** VMware Workstation takes traffic on Host Port `2121` and translates it to VM IP `192.168.1.10:21`.
+5. **Windows Server VM:** IIS FTP Server validates Active Directory credentials (`E6\Administrator`) and serves `welcome.txt` back to the user!
+
+---
+
+## FTPS (FTP over SSL/TLS) Packet Flow via ngrok
+
+```
+                       FTPS OVER SSL/TLS PACKET FLOW
+                       
+  [ External Client (Fedora / Phone / FileZilla) ]
+                    │
+                    ▼  1. Encrypted TLS Request: 0.tcp.ap.ngrok.io:26238
+  🌐 ngrok Global Edge Server (Cloud Data Center)
+                    │
+                    ▼  2. Encrypted Tunnel to ngrok agent process
+  💻 Physical Laptop Host (listening on localhost:2121)
+                    │
+                    ▼  3. VMware NAT Port Forwarding (Host 2121 ──► VM 21)
+  🔄 VMware Virtual Switch (VMnet8)
+                    │
+                    ▼  4. Inbound TLS Connection (Port 21/990)
+  🖥️ Windows Server VM (192.168.1.10:21)
+                    │  - Decrypts TLS using SSL Certificate
+                    │  - Authenticates E6\Administrator against Active Directory
+                    ▼  
+  🎉 Serves encrypted files back to Client!
+```
+
+### Key Differences between Plain FTP and FTPS:
+- **Plain FTP (Port 21):** Passwords and data sent in clear text. Requires dynamic data ports (`1024-65535`).
+- **FTPS (Port 990 / 21 TLS):** Passwords and data encrypted using TLS certificates. Supports SSL session reuse over control channel.
+
+> **Recommended Enterprise Solution for CGNAT & Remote Workers: Tailscale Mesh VPN ⭐**
+> - **Why it's recommended:** Home ISPs use CGNAT (`100.64.0.0/10`), blocking inbound public router ports across different networks.
+> - **How Tailscale solves it:** Tailscale uses WireGuard encrypted mesh networking to connect external devices (e.g. Fedora laptop on 4G) directly to the Windows Server VM over any network globally without needing public IPs, router port forwarding, or monthly ISP fees.
+
+> **Internal Port vs. External Port Explained:**
+> 
+> | Term | Where it exists | Real-World Analogy | Purpose & Example |
+> |:---|:---|:---|:---|
+> | **External Port** | **Public Internet Side** | **Building Street Number** | The port that users on the Internet type to reach your router (e.g. `ftp://<PUBLIC_IP>:2121`). |
+> | **Internal Port** | **Local Network Side** | **Room / Desk Extension** | The port on your local computer/VMware host where the service is actually listening (e.g. Port `2121`). |
+>
+> * **Port Translation (PAT):** The router automatically translates incoming requests from External Port 2121 to Internal Port 2121 on your laptop!
+
+> **Safety & Network Impact FAQ:**
+> - **Will this disrupt current Wi-Fi or connected devices?** NO! Port forwarding only routes specific incoming traffic on Port 2121. All existing Wi-Fi devices, phones, TVs, and internet browsing remain 100% unaffected.
+> - **Is it dangerous?** Using a non-standard port (`2121`) protected by domain credentials (`E6\Administrator`) keeps the lab safe. When you complete your testing, simply delete or disable the Port Mapping rule in the router.
+
+   ```text
+   ftp://<YOUR_PUBLIC_IP>:2121
+   ```
+4. Log in with `E6\Administrator` and your password!
 
 ---
 
