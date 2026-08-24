@@ -148,19 +148,42 @@ Assemble these 4 items inside `C:\inetpub\portfolio\` on `pro-win-server`:
 Open **PowerShell as Administrator** on `pro-win-server` and run:
 
 ```powershell
-# 1. Install PM2 Globally
+# 1. Install PM2 & Windows Startup Service Helper
 npm install -g pm2
+npm install -g pm2-windows-startup
 
-# 2. Grant IIS Folder Permissions
+# 2. Register PM2 as a Windows System Service
+pm2-startup install
+
+# 3. Grant IIS Folder Permissions
 icacls C:\inetpub\portfolio /grant "IIS_IUSRS":(OI)(CI)F /T
 icacls C:\inetpub\portfolio /grant "IUSR":(OI)(CI)F /T
 
-# 3. Launch Next.js Standalone Server
+# 4. Launch Next.js Standalone Server
 cd C:\inetpub\portfolio
 pm2 start server.js --name "Portfolio"
 
-# 4. Save Process List for Auto-Start on Server Reboot
+# 5. Save Process List for Auto-Start on Windows Reboot
 pm2 save
+```
+
+#### How `pm2-windows-startup` Works Behind the Scenes:
+- **`npm install -g pm2-windows-startup`**: Installs the Windows Service wrapper tool for PM2.
+- **`pm2-startup install`**: Registers a new official Windows Background Service named `pm2` inside Windows Services (`services.msc`).
+- **`pm2 save`**: Saves your running website (`Portfolio`) into a permanent configuration file (`~/.pm2/dump.pm2`).
+
+#### The Auto-Boot Timeline:
+```text
+ 🔌 1. Windows Server VM Powers On / Reboots
+       │
+       ▼  2. Windows launches background services (services.msc)
+ ⚙️ `pm2-windows-startup` Service Launches Automatically
+       │
+       ▼  3. Reads saved process list (~/.pm2/dump.pm2)
+ ⚡ Restores 'Portfolio' Next.js Server (localhost:3000)
+       │
+       ▼  4. IIS Reverse Proxy routes traffic
+ 🎉 Website is live 24/7 on boot before anyone even logs into Windows!
 ```
 
 ---
