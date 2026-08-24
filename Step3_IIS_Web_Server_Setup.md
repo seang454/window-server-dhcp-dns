@@ -70,12 +70,21 @@ Internet Information Services (IIS) is Microsoft's enterprise web server softwar
 
 ---
 
-## 🚀 Step-by-Step Implementation Guide
+## 🚀 Step-by-Step Detailed Configuration Guide
 
-### Phase 1: Dev Machine Setup (`next.config.ts`)
+---
 
-Open `next.config.ts` in your Next.js project and ensure it contains:
+### Step 1: Configure `next.config.ts` for Standalone Output
 
+#### 🎯 Objective & Purpose
+To instruct Next.js to compile a lightweight, self-contained standalone server package containing Node.js server entry points and required dependencies.
+
+#### 🛠️ What it is for
+Projects containing API routes, environment variables (`.env`), Resend email integrations, and dynamic backend logic cannot be compiled into static HTML (`output: 'export'`). Setting `output: "standalone"` instructs Next.js to package a standalone Node.js server bundle inside `.next/standalone/`.
+
+#### ⚙️ Configuration Steps
+1. Open `next.config.ts` in your Next.js project root in VS Code.
+2. Replace contents with:
 ```typescript
 import type { NextConfig } from "next";
 
@@ -89,36 +98,41 @@ const nextConfig: NextConfig = {
 
 export default nextConfig;
 ```
-
-Run in VS Code terminal:
+3. Open VS Code terminal (`Ctrl + ~`) and run:
 ```bash
 npm run build
 ```
 
+#### ✅ Expected Verification Result
+Terminal displays `✓ Exporting...` and `✓ Finalizing page optimization`. The directory `.next/standalone/` is created inside your project folder.
+
 ---
 
-### Phase 2: Copy Files to `C:\inetpub\portfolio\` on Server
+### Step 2: Assemble Production Files in `C:\inetpub\portfolio\`
 
-Assemble these 4 items inside `C:\inetpub\portfolio\` on `pro-win-server`:
+#### 🎯 Objective & Purpose
+To assemble the exact compiled production bundle on `pro-win-server` so Node.js can execute `server.js` with access to static assets, images, and `.env` secrets.
 
-```text
- 📁 C:\inetpub\portfolio\
-  ├── 📄 server.js               (From .next/standalone/server.js)
-  ├── 📄 .env                    (Your Resend API Keys & Secrets)
-  ├── 📄 web.config              (IIS Reverse Proxy & Security Rules)
-  ├── 📁 public/                 (Contains cv.pdf & public images)
-  ├── 📁 .next/
-  │    ├── 📁 static/            (From .next/static/)
-  │    └── 📁 server/            (From .next/standalone/.next/server/)
-  └── 📁 node_modules/           (From .next/standalone/node_modules/)
-```
+#### 🛠️ What it is for
+- `server.js`: Node.js entry point script.
+- `.env`: Contains `RESEND_API_KEY`, secrets, and site URLs.
+- `public/`: Contains static images and `cv.pdf`.
+- `.next/static/`: Contains compiled React CSS/JS bundles.
+- `web.config`: Instructs IIS how to handle reverse proxy routing and security filtering.
 
-#### Production-Ready `C:\inetpub\portfolio\web.config`:
+#### ⚙️ Configuration Steps
+1. On `pro-win-server`, open File Explorer → navigate to `C:\inetpub\`.
+2. Create new folder named `portfolio` (`C:\inetpub\portfolio\`).
+3. Copy these 4 items into `C:\inetpub\portfolio\`:
+   - Everything inside `.next/standalone/` ──► `C:\inetpub\portfolio\`
+   - `.next/static/` folder ──► `C:\inetpub\portfolio\.next\static\`
+   - `public/` folder ──► `C:\inetpub\portfolio\public\`
+   - `.env` file ──► `C:\inetpub\portfolio\.env`
+4. Create `C:\inetpub\portfolio\web.config` with:
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
     <system.webServer>
-        <!-- 1. IIS Reverse Proxy Rule to Next.js (Port 3000) -->
         <rewrite>
             <rules>
                 <rule name="ReverseProxyInboundRule1" stopProcessing="true">
@@ -127,8 +141,6 @@ Assemble these 4 items inside `C:\inetpub\portfolio\` on `pro-win-server`:
                 </rule>
             </rules>
         </rewrite>
-
-        <!-- 2. Security: Block public access to .env or node_modules -->
         <security>
             <requestFiltering>
                 <hiddenSegments>
@@ -141,10 +153,23 @@ Assemble these 4 items inside `C:\inetpub\portfolio\` on `pro-win-server`:
 </configuration>
 ```
 
+#### ✅ Expected Verification Result
+`C:\inetpub\portfolio\` contains `server.js`, `web.config`, `.env`, `public/`, `.next/`, and `node_modules/`.
+
 ---
 
-### Phase 3: Start Next.js 24/7 Background Process via PM2
+### Step 3: Install Node.js LTS & Enable PM2 24/7 Background Auto-Start
 
+#### 🎯 Objective & Purpose
+To run Next.js `server.js` silently in the background 24/7 as a Windows System Service that automatically launches when Windows Server reboots.
+
+#### 🛠️ What it is for
+- Node.js LTS: JavaScript runtime environment.
+- PM2: Enterprise process manager that monitors `server.js`, auto-restarts on crash, and manages background tasks.
+- `pm2-windows-startup`: Registers PM2 into Windows Services (`services.msc`) so `server.js` launches on Windows boot before user login.
+- `icacls`: Grants IIS Application Pool workers (`IIS_IUSRS`) write access to server directories.
+
+#### ⚙️ Configuration Steps
 Open **PowerShell as Administrator** on `pro-win-server` and run:
 
 ```powershell
@@ -167,90 +192,103 @@ pm2 start server.js --name "Portfolio"
 pm2 save
 ```
 
-#### How `pm2-windows-startup` Works Behind the Scenes:
-- **`npm install -g pm2-windows-startup`**: Installs the Windows Service wrapper tool for PM2.
-- **`pm2-startup install`**: Registers a new official Windows Background Service named `pm2` inside Windows Services (`services.msc`).
-- **`pm2 save`**: Saves your running website (`Portfolio`) into a permanent configuration file (`~/.pm2/dump.pm2`).
-
-#### The Auto-Boot Timeline:
-```text
- 🔌 1. Windows Server VM Powers On / Reboots
-       │
-       ▼  2. Windows launches background services (services.msc)
- ⚙️ `pm2-windows-startup` Service Launches Automatically
-       │
-       ▼  3. Reads saved process list (~/.pm2/dump.pm2)
- ⚡ Restores 'Portfolio' Next.js Server (localhost:3000)
-       │
-       ▼  4. IIS Reverse Proxy routes traffic
- 🎉 Website is live 24/7 on boot before anyone even logs into Windows!
-```
+#### ✅ Expected Verification Result
+Running `pm2 status` displays process `Portfolio` with status `online` on Port 3000.
 
 ---
 
-### Phase 4: IIS Reverse Proxy & DNS Setup
+### Step 4: Configure IIS Application Request Routing (ARR) Proxy
 
-#### 1. Enable IIS Proxy (ARR Extension)
-1. Open **IIS Manager** on `pro-win-server`.
-2. Click server name at top left (**`WIN-J17IMHCEMA9`**).
+#### 🎯 Objective & Purpose
+To enable IIS's Reverse Proxy engine to receive incoming web requests on Port 80/443 and route them internally to Node.js on `http://localhost:3000`.
+
+#### 🛠️ What it is for
+IIS ARR acts as the front-end web gateway. It handles domain name bindings (`portfolio.e6.local`), SSL certificates, and security filtering, while forwarding dynamic requests to Node.js.
+
+#### ⚙️ Configuration Steps
+1. Install **URL Rewrite 2.1** and **ARR 3.0** extensions on `pro-win-server`.
+2. Open **IIS Manager** → click server name (`WIN-J17IMHCEMA9`).
 3. Double-click **Application Request Routing Cache**.
 4. In right panel, click **Server Proxy Settings...** → check ✅ **Enable proxy** → click **Apply**.
-
-#### 2. Unlock IIS Handlers Section
-Run in Command Prompt (Admin) on `pro-win-server`:
+5. Unlock IIS Handlers section via Command Prompt (Admin):
 ```cmd
 %windir%\system32\inetsrv\appcmd.exe unlock config -section:system.webServer/handlers
 ```
 
-#### 3. Create Website in IIS Manager
+#### ✅ Expected Verification Result
+IIS Manager shows Proxy enabled, and `appcmd` displays `unlocked section "system.webServer/handlers"`.
+
+---
+
+### Step 5: Create IIS Web Site & Reverse Proxy Rules
+
+#### 🎯 Objective & Purpose
+To create the `Portfolio` site in IIS Manager bound to domain `portfolio.e6.local` on Port 80 and forward incoming requests to `http://localhost:3000`.
+
+#### 🛠️ What it is for
+Host Headers allow multiple websites (`server1.e6.local`, `portfolio.e6.local`) to share standard Port 80 without port conflicts.
+
+#### ⚙️ Configuration Steps
 1. In **IIS Manager**, right-click **Sites** → select **Add Website...**
-2. Fill in:
    - **Site name:** `Portfolio`
    - **Physical path:** `C:\inetpub\portfolio`
-   - **Port:** `80` (or `8081`)
+   - **Port:** `80`
    - **Host name:** `portfolio.e6.local`
-3. Click **OK**.
+2. Click **OK**.
+3. Select **Portfolio** site → double-click **URL Rewrite**.
+4. Click **Add Rule(s)...** → select **Reverse Proxy**.
+5. Inbound server name: `localhost:3000` → click **OK**.
 
-#### 4. Add Reverse Proxy Rule
-1. Click **Portfolio** site → double-click **URL Rewrite**.
-2. Click **Add Rule(s)...** → select **Reverse Proxy**.
-3. Inbound server name: `localhost:3000` → click **OK**.
+#### ✅ Expected Verification Result
+`Portfolio` website appears under Sites in IIS Manager, bound to `http *:80:portfolio.e6.local`.
 
-#### 5. Add DNS Record for `portfolio.e6.local`
+---
+
+### Step 6: Create DNS Host A Record & Configure Firewall
+
+#### 🎯 Objective & Purpose
+To allow all computers on the network to resolve `portfolio.e6.local` → `192.168.1.10` and permit HTTP Port 80 traffic through Windows Firewall.
+
+#### 🛠️ What it is for
+- DNS A Record: Translates domain name `portfolio.e6.local` into Server IP `192.168.1.10`.
+- Firewall Rule: Opens inbound TCP Port 80 so client computers can reach IIS.
+
+#### ⚙️ Configuration Steps
 1. Open **DNS Manager** (**Server Manager → Tools → DNS**).
 2. Expand `WIN-J17IMHCEMA9` → **Forward Lookup Zones** → right-click **`e6.local`**.
 3. Select **New Host (A or AAAA)...** → Name: `portfolio` | IP: `192.168.1.10` → click **Add Host**.
-
-#### 6. Open Firewall Port 80
-Run in PowerShell (Admin) on `pro-win-server`:
+4. Open PowerShell (Admin) and run:
 ```powershell
 netsh advfirewall firewall add rule name="Allow World Wide Web HTTP Port 80" dir=in action=allow protocol=TCP localport=80
 ```
+
+#### ✅ Expected Verification Result
+Running `nslookup portfolio.e6.local` on client VM resolves to `192.168.1.10`.
 
 ---
 
 ## 🌐 Testing Matrix
 
-| Client Location | Test URL / Command | Expected Result |
+| Client Location | Test URL / Command | Objective & Verification |
 |:---|:---|:---|
-| **Client VM (`pro-win-client`)** | `http://portfolio.e6.local` | Full React Next.js Portfolio loads, Resend API works, CV downloads! |
-| **Physical Laptop (hosts file)** | `http://portfolio.e6.local` (after adding `192.168.100.4 portfolio.e6.local` in `hosts`) | Portfolio website renders cleanly on physical laptop browser! |
-| **Public Internet (ngrok)** | `ngrok http 127.0.0.1:8080` → `https://xxxx.ngrok-free.app` | Accessible from any mobile phone or computer worldwide 24/7! |
+| **Client VM (`pro-win-client`)** | `http://portfolio.e6.local` | Verifies internal domain resolution, IIS Reverse Proxy, Node.js execution, Resend API, & CV download! |
+| **Physical Laptop (hosts file)** | `http://portfolio.e6.local` (with `192.168.100.4 portfolio.e6.local` in `hosts`) | Verifies host-to-VM network bridge and website rendering! |
+| **Public Internet (ngrok)** | `ngrok http 127.0.0.1:8080` → `https://xxxx.ngrok-free.app` | Verifies worldwide public access from mobile phones or external networks! |
 
 ---
 
 ## 🛠️ Troubleshooting Guide
 
 ### 1. Error: `HTTP 502 Bad Gateway`
-- **Cause:** Node.js standalone server is not running on Port 3000.
+- **Objective / Cause:** Node.js standalone server is not running on Port 3000.
 - **Fix:** Run `pm2 start server.js --name "Portfolio"` inside `C:\inetpub\portfolio\`. Check status with `pm2 status`.
 
 ### 2. Error: `DNS_PROBE_FINISHED_NXDOMAIN` on Physical Laptop
-- **Cause:** Physical laptop DNS points to Home Wi-Fi router instead of VM DNS (`192.168.1.10`).
+- **Objective / Cause:** Physical laptop DNS points to Home Wi-Fi router instead of VM DNS (`192.168.1.10`).
 - **Fix:** Open `C:\Windows\System32\drivers\etc\hosts` on physical laptop as Admin, add line: `192.168.100.4 portfolio.e6.local`.
 
 ### 3. Error: `HTTP 500.19 - 0x80070021`
-- **Cause:** Handlers section locked at IIS server level.
+- **Objective / Cause:** Handlers section locked at IIS server level.
 - **Fix:** Run `%windir%\system32\inetsrv\appcmd.exe unlock config -section:system.webServer/handlers` on server.
 
 ---
