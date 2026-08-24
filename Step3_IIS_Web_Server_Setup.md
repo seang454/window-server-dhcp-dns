@@ -1,253 +1,234 @@
-# Step 3: Web Server (IIS) Setup & Custom Website Guide
+# Step 3: Web Server (IIS) & Next.js + TypeScript Deployment Guide
 
 **Windows Server 2022 on VMware Workstation**  
 **Domain: e6.local**  
 **Server IP: 192.168.1.10**  
 **Server Hostname: server1.e6.local**  
+**Portfolio Website Domain: portfolio.e6.local**  
+**Application Architecture: Next.js 16 (TypeScript) + Standalone Node.js + PM2 + IIS Reverse Proxy (ARR)**  
 
 ---
 
 ## 📖 Deep-Dive Concepts & Theory
 
 ### 1. What is a Web Server (IIS)?
-Internet Information Services (IIS) is Microsoft's enterprise web server software role built into Windows Server. It allows companies to host websites, web applications, REST APIs, and intranet portals for employees and public internet users.
+Internet Information Services (IIS) is Microsoft's enterprise web server software built into Windows Server. It hosts corporate websites, web applications, REST APIs, and intranet portals.
 
-### 2. What is it used for?
-- **Corporate Intranet Portals:** Internal employee news, HR portals, and department dashboards.
-- **Public Company Websites:** E-commerce stores, corporate homepages, and customer portals.
-- **Web Applications & APIs:** Hosting ASP.NET Core, PHP, Node.js, or HTML/CSS/JS applications.
-- **Secure File Downloads:** Serving documents, images, and video assets via HTTP/HTTPS protocols.
-
-### 3. Key Advantages of IIS:
-- **Active Directory Integration:** Authenticate internal web users using domain accounts (`E6\Username`) via Windows Authentication (NTLM / Kerberos).
-- **High Performance & Multi-Site Hosting:** Host multiple websites on a single IP using **Host Headers** and **Port Bindings**.
-- **Security & SSL/TLS Management:** Native support for HTTPS encryption, SSL certificates, Request Filtering, and IP Restrictions.
-- **Centralized Management:** Managed visually through **IIS Manager** (`inetmgr`).
-
-### 4. Microsoft IIS vs. Nginx Web Server Comparison
-
-| Feature | 🏢 Microsoft IIS (Internet Information Services) | ⚡ Nginx Web Server / Reverse Proxy |
-|:---|:---|:---|
-| **OS Native Environment** | Native to **Windows Server** (built-in role). | Native to **Linux** (Ubuntu, RedHat, Fedora). |
-| **Active Directory Integration** | Native Single Sign-On (SSO), Kerberos, and AD Domain user authentication out-of-the-box. | Requires LDAP / RADIUS modules. |
-| **Primary Enterprise Use Case** | Corporate intranet web portals, ASP.NET applications, IIS Web & FTP file servers. | High-concurrency Reverse Proxy, Load Balancer, SSL Termination, Microservices API Gateway. |
-| **Installation Location** | Installed on **Windows Server VM (`pro-win-server`)**. | Installed on Linux VM or as Reverse Proxy in front of Web Servers. |
-
-| Feature | 🌐 HTTP (Hypertext Transfer Protocol) | 🔒 HTTPS (HTTP Secure) |
-|:---|:---|:---|
-| **Port Number** | **TCP Port 80** | **TCP Port 443** |
-| **Security** | Plain text (passwords and data visible to eavesdroppers). | **Encrypted (SSL/TLS)** (data protected by digital certificates). |
-| **Browser Indicator** | Displays "Not Secure" ⚠️ warning banner. | Displays Secure Padlock 🔒 icon. |
-| **Use Case** | Internal practice labs & development environments. | Enterprise production websites, online banking, e-commerce. |
+### 2. Microsoft IIS vs. Next.js Architecture
+- **IIS is not a Next.js runtime:** IIS natively executes ASP.NET and serves static files; it relies on Node.js to execute server-side JavaScript logic (`RESEND_API_KEY`, API routes, server actions).
+- **PM2 Process Manager:** Runs `node server.js` on internal TCP Port `3000` in the background 24/7, auto-restarting on crash or server reboot.
+- **IIS Reverse Proxy (ARR + URL Rewrite):** IIS sits in front on Port 80/443, handling public domain routing (`portfolio.e6.local`), SSL certificates, and security headers, forwarding requests internally to `http://localhost:3000`.
 
 ---
 
-## 📁 What is a Default Document?
-When a user opens `http://server1.e6.local` without typing a specific filename in the URL, IIS looks inside `C:\inetpub\wwwroot\` for a **Default Document** to serve automatically.
+## 📊 Architectural Comparison: `iisnode` vs. `PM2` for Next.js
 
-IIS checks default filenames in this order:
-1. `index.html` *(Custom HTML Homepage)*
-2. `index.htm`
-3. `Default.htm`
-4. `Default.asp`
-5. `iisstart.htm` *(Default Windows IIS Welcome Page)*
+| Feature | 📦 Microsoft `iisnode` | ⚡ `PM2` (Process Manager 2) ⭐ |
+|:---|:---|:---|
+| **Communication Protocol** | Uses legacy **Windows Named Pipes** (`\\.\pipe\`). | Uses standard **TCP Network Sockets** (`http://localhost:3000`). |
+| **Next.js 15/16 Standalone Compatibility** | ❌ **Incompatible** (Next.js 16 `server.js` requires TCP sockets; fails on Named Pipes with HTTP 500.1001). | ✅ **100% Compatible** (Native support for Next.js 16 standalone, API Routes, Resend emails, & SSR). |
+| **Process Control & Monitoring** | Managed inside IIS Application Pools (`w3wp.exe`). | Managed via live CLI dashboard (`pm2 status`, `pm2 logs`, `pm2 monit`). |
+| **Server Reboot Auto-Start** | Managed via IIS Service. | Managed via `pm2 save` & `pm2-startup install`. |
+| **Industry Status** | Legacy extension (unmaintained since 2018). | **Active global industry standard** for Node.js production servers. |
+
+---
+
+## 🔄 Master Deployment Flowchart: PM2 + IIS Reverse Proxy
+
+```
+                        MASTER DEPLOYMENT FLOWCHART
+                        
+ [ PHASE 1: DEV MACHINE (VS Code) ]
+   1. Set `output: "standalone"` in `next.config.ts`
+   2. Run `npm run build` ──► Generates `.next/standalone/`
+            │
+            ▼
+ [ PHASE 2: SERVER PREPARATION (pro-win-server) ]
+   1. Install Node.js LTS (v24.19.0)
+   2. Install IIS Extensions: URL Rewrite 2.1 & ARR 3.0
+   3. Enable Proxy in IIS ARR (Server Proxy Settings ──► Enable proxy)
+            │
+            ▼
+ [ PHASE 3: FILE ASSEMBLY (C:\inetpub\portfolio\) ]
+   Copy 4 items into C:\inetpub\portfolio\:
+   ├── 📄 server.js + node_modules/   (From .next/standalone/)
+   ├── 📄 .env                        (Your Resend API Key & Secrets)
+   ├── 📁 public/                     (cv.pdf & images)
+   └── 📁 .next/static/               (Compiled CSS/JS static assets)
+            │
+            ▼
+ [ PHASE 4: EXECUTION & REVERSE PROXY ]
+   1. Start 24/7 Node Server via PM2: `pm2 start server.js --name "Portfolio"` (Port 3000)
+   2. Create IIS Site: `Portfolio` (Port 80, Host name: `portfolio.e6.local`)
+   3. Add IIS Reverse Proxy Rule: Port 80 ──► `http://localhost:3000`
+   4. Add DNS Host Record: `portfolio.e6.local` ──► `192.168.1.10`
+   5. Open Firewall Port 80: `netsh advfirewall firewall add rule ...`
+            │
+            ▼
+ 🎉 SUCCESS! Next.js API Routes, Resend Emails & Portfolio Live 24/7!
+```
 
 ---
 
 ## 🚀 Step-by-Step Implementation Guide
 
-### Step 1. Install Web Server (IIS) Role via Server Manager
-*(Note: If you already installed IIS during Step 2 FTP setup, verify it is listed as **Installed**).*
+### Phase 1: Dev Machine Setup (`next.config.ts`)
 
-1. Open **Server Manager** on `pro-win-server`.
-2. Click **Manage → Add Roles and Features**.
-3. Click **Next** until you reach **Server Roles**.
-4. Check ✅ **Web Server (IIS)** (click **Add Features** on the popup).
-5. Click **Next → Next → Install**.
-6. Wait for installation to complete → click **Close**.
+Open `next.config.ts` in your Next.js project and ensure it contains:
 
----
+```typescript
+import type { NextConfig } from "next";
 
-### Step 2. Create Custom Company Website Homepage (`index.html`)
+const nextConfig: NextConfig = {
+  reactStrictMode: true,
+  output: "standalone",
+  images: {
+    unoptimized: true,
+  },
+};
 
-1. Open **File Explorer** on `pro-win-server` → navigate to `C:\inetpub\wwwroot\`.
-2. Right-click inside `C:\inetpub\wwwroot\` → select **New → Text Document**.
-3. Rename the file to **`index.html`** *(confirm file extension change when prompted)*.
-4. Right-click `index.html` → select **Open with → Notepad**.
-5. Paste the following clean HTML corporate template:
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>E6 Enterprise Portal | server1.e6.local</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; text-align: center; }
-        header { background-color: #003366; color: white; padding: 30px 0; }
-        h1 { margin: 0; font-size: 2.2em; }
-        p.subtitle { margin-top: 8px; font-size: 1.1em; color: #b0c4de; }
-        .container { width: 80%; max-width: 800px; margin: 40px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        .status-box { background-color: #e6fffa; border-left: 5px solid #38b2ac; padding: 15px; margin: 20px 0; text-align: left; }
-        .grid { display: flex; justify-content: space-around; margin-top: 30px; }
-        .card { background: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; border-radius: 6px; width: 45%; }
-        footer { margin-top: 50px; color: #718096; font-size: 0.9em; padding-bottom: 20px; }
-    </style>
-</head>
-<body>
-    <header>
-        <h1>Welcome to E6 Enterprise Web Portal</h1>
-        <p class="subtitle">Windows Server 2022 Infrastructure Lab</p>
-    </header>
-
-    <div class="container">
-        <h2>Web Server Status: Active ✅</h2>
-        <div class="status-box">
-            <strong>Server Hostname:</strong> server1.e6.local<br>
-            <strong>Server IP Address:</strong> 192.168.1.10<br>
-            <strong>Domain Name:</strong> e6.local<br>
-            <strong>Web Server Engine:</strong> Microsoft IIS / 10.0
-        </div>
-
-        <div class="grid">
-            <div class="card">
-                <h3>📁 File & FTP Access</h3>
-                <p>Shared Data: <code>\\server1.e6.local\CompanyData</code></p>
-                <p>FTP Server: <code>ftp://server1.e6.local</code></p>
-            </div>
-            <div class="card">
-                <h3>🔒 Network Identity</h3>
-                <p>DNS Server: <code>192.168.1.10</code></p>
-                <p>DHCP Scope: <code>192.168.1.100 - .200</code></p>
-            </div>
-        </div>
-    </div>
-
-    <footer>
-        &copy; 2026 E6 Enterprise Domain Infrastructure. All rights reserved.
-    </footer>
-</body>
-</html>
+export default nextConfig;
 ```
 
-6. Click **File → Save** and close Notepad.
+Run in VS Code terminal:
+```bash
+npm run build
+```
 
 ---
 
-### Step 3. Verify Default Document in IIS Manager
+### Phase 2: Copy Files to `C:\inetpub\portfolio\` on Server
 
-1. Open **Server Manager → Tools → Internet Information Services (IIS) Manager**.
-2. Expand `WIN-J17IMHCEMA9` → expand **Sites** → click **Default Web Site**.
-3. In the middle panel, double-click **Default Document**.
-4. Verify that **`index.html`** is listed at the top of the list:
-   - If not listed: Right-click blank space → click **Add...** → type `index.html` → click **OK**.
-   - Select `index.html` → click **Move Up** in the right panel until it is at the very top.
+Assemble these 4 items inside `C:\inetpub\portfolio\` on `pro-win-server`:
+
+```text
+ 📁 C:\inetpub\portfolio\
+  ├── 📄 server.js               (From .next/standalone/server.js)
+  ├── 📄 .env                    (Your Resend API Keys & Secrets)
+  ├── 📄 web.config              (IIS Reverse Proxy & Security Rules)
+  ├── 📁 public/                 (Contains cv.pdf & public images)
+  ├── 📁 .next/
+  │    ├── 📁 static/            (From .next/static/)
+  │    └── 📁 server/            (From .next/standalone/.next/server/)
+  └── 📁 node_modules/           (From .next/standalone/node_modules/)
+```
+
+#### Production-Ready `C:\inetpub\portfolio\web.config`:
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <system.webServer>
+        <!-- 1. IIS Reverse Proxy Rule to Next.js (Port 3000) -->
+        <rewrite>
+            <rules>
+                <rule name="ReverseProxyInboundRule1" stopProcessing="true">
+                    <match url="(.*)" />
+                    <action type="Rewrite" url="http://localhost:3000/{R:1}" />
+                </rule>
+            </rules>
+        </rewrite>
+
+        <!-- 2. Security: Block public access to .env or node_modules -->
+        <security>
+            <requestFiltering>
+                <hiddenSegments>
+                    <add segment="node_modules" />
+                    <add segment=".env" />
+                </hiddenSegments>
+            </requestFiltering>
+        </security>
+    </system.webServer>
+</configuration>
+```
 
 ---
 
-### Step 4. Enable Web Server Firewall Rule (HTTP Port 80)
+### Phase 3: Start Next.js 24/7 Background Process via PM2
 
-Open **Command Prompt as Administrator** on `pro-win-server` and run:
+Open **PowerShell as Administrator** on `pro-win-server` and run:
 
+```powershell
+# 1. Install PM2 Globally
+npm install -g pm2
+
+# 2. Grant IIS Folder Permissions
+icacls C:\inetpub\portfolio /grant "IIS_IUSRS":(OI)(CI)F /T
+icacls C:\inetpub\portfolio /grant "IUSR":(OI)(CI)F /T
+
+# 3. Launch Next.js Standalone Server
+cd C:\inetpub\portfolio
+pm2 start server.js --name "Portfolio"
+
+# 4. Save Process List for Auto-Start on Server Reboot
+pm2 save
+```
+
+---
+
+### Phase 4: IIS Reverse Proxy & DNS Setup
+
+#### 1. Enable IIS Proxy (ARR Extension)
+1. Open **IIS Manager** on `pro-win-server`.
+2. Click server name at top left (**`WIN-J17IMHCEMA9`**).
+3. Double-click **Application Request Routing Cache**.
+4. In right panel, click **Server Proxy Settings...** → check ✅ **Enable proxy** → click **Apply**.
+
+#### 2. Unlock IIS Handlers Section
+Run in Command Prompt (Admin) on `pro-win-server`:
 ```cmd
+%windir%\system32\inetsrv\appcmd.exe unlock config -section:system.webServer/handlers
+```
+
+#### 3. Create Website in IIS Manager
+1. In **IIS Manager**, right-click **Sites** → select **Add Website...**
+2. Fill in:
+   - **Site name:** `Portfolio`
+   - **Physical path:** `C:\inetpub\portfolio`
+   - **Port:** `80` (or `8081`)
+   - **Host name:** `portfolio.e6.local`
+3. Click **OK**.
+
+#### 4. Add Reverse Proxy Rule
+1. Click **Portfolio** site → double-click **URL Rewrite**.
+2. Click **Add Rule(s)...** → select **Reverse Proxy**.
+3. Inbound server name: `localhost:3000` → click **OK**.
+
+#### 5. Add DNS Record for `portfolio.e6.local`
+1. Open **DNS Manager** (**Server Manager → Tools → DNS**).
+2. Expand `WIN-J17IMHCEMA9` → **Forward Lookup Zones** → right-click **`e6.local`**.
+3. Select **New Host (A or AAAA)...** → Name: `portfolio` | IP: `192.168.1.10` → click **Add Host**.
+
+#### 6. Open Firewall Port 80
+Run in PowerShell (Admin) on `pro-win-server`:
+```powershell
 netsh advfirewall firewall add rule name="Allow World Wide Web HTTP Port 80" dir=in action=allow protocol=TCP localport=80
 ```
 
 ---
 
-### Step 5. Client Testing Flow for Web Server (`pro-win-client`)
+## 🌐 Testing Matrix
 
-```
-                           WEB SERVER TESTING FLOW
-                           
-   [1. Open Client Browser] ──► [2. Type http://server1.e6.local] ──► [3. DNS Resolves IP]
-                                                                              │
-                                                                              ▼
-   [5. Custom Website Displays! 🎉] ◄── [4. IIS Serves index.html] ◄───────┘
-```
-
-#### Test 1: Access Web Server via Domain Name
-1. Open **Microsoft Edge** or **Internet Explorer** on `pro-win-client`.
-2. In the top address bar, type:
-   ```text
-   http://server1.e6.local
-   ```
-3. Press **Enter**.
-4. **Expected Result:** The blue corporate homepage titled **"Welcome to E6 Enterprise Web Portal"** displays instantly!
-
-#### Test 2: Access Web Server via IP Address
-1. In the browser address bar, type:
-   ```text
-   http://192.168.1.10
-   ```
-2. Press **Enter**.
-3. **Expected Result:** The custom homepage displays cleanly!
+| Client Location | Test URL / Command | Expected Result |
+|:---|:---|:---|
+| **Client VM (`pro-win-client`)** | `http://portfolio.e6.local` | Full React Next.js Portfolio loads, Resend API works, CV downloads! |
+| **Physical Laptop (hosts file)** | `http://portfolio.e6.local` (after adding `192.168.100.4 portfolio.e6.local` in `hosts`) | Portfolio website renders cleanly on physical laptop browser! |
+| **Public Internet (ngrok)** | `ngrok http 127.0.0.1:8080` → `https://xxxx.ngrok-free.app` | Accessible from any mobile phone or computer worldwide 24/7! |
 
 ---
 
-## 🏠 Local vs. 🌐 Public Web Publishing Setup
+## 🛠️ Troubleshooting Guide
 
-### 🏠 1. Local Network Access (Internal Intranet)
-- **URL:** `http://server1.e6.local` (Port 80)
-- **Scope:** Accessible only by devices on `192.168.1.0/24` LAN.
-- **Authentication:** Integrated Windows Authentication (AD Single Sign-On).
+### 1. Error: `HTTP 502 Bad Gateway`
+- **Cause:** Node.js standalone server is not running on Port 3000.
+- **Fix:** Run `pm2 start server.js --name "Portfolio"` inside `C:\inetpub\portfolio\`. Check status with `pm2 status`.
 
-### 🌐 2. Public Access Simulation (VMware NAT Port Forwarding & ngrok)
+### 2. Error: `DNS_PROBE_FINISHED_NXDOMAIN` on Physical Laptop
+- **Cause:** Physical laptop DNS points to Home Wi-Fi router instead of VM DNS (`192.168.1.10`).
+- **Fix:** Open `C:\Windows\System32\drivers\etc\hosts` on physical laptop as Admin, add line: `192.168.100.4 portfolio.e6.local`.
 
-#### Step 1: Configure VMware NAT Port Forwarding (Host 8080 ──► VM 80)
-1. On your **Physical Laptop**, open **VMware Workstation**.
-2. Click **Edit → Virtual Network Editor** → click **Change Settings** (Admin prompt).
-3. Select **VMnet8 (NAT)** → click **NAT Settings...**
-4. Click **Add...** and fill in:
-   - **Host Port:** `8080`
-   - **Type:** `TCP`
-   - **Virtual machine IP address:** `192.168.1.10`
-   - **Virtual machine port:** `80`
-   - **Description:** `Public Web IIS`
-5. Click **OK → Apply → OK**.
-
-#### Step 2: Open Port 8080 on Physical Laptop Firewall
-Open Command Prompt as Administrator on your physical laptop (`C:\Users\M>`) and run:
-```cmd
-netsh advfirewall firewall add rule name="Allow VMware Public Web Port 8080" dir=in action=allow protocol=TCP localport=8080
-```
-
-#### Step 3: Launch ngrok HTTP Tunnel on Physical Laptop
-Open Command Prompt on your physical laptop (`C:\Users\M>`) and run:
-```cmd
-ngrok http 127.0.0.1:8080
-```
-
-#### Step 4: Access Website from Any Device Worldwide!
-Anyone on any mobile phone, Fedora laptop, or remote computer opens the generated link:
-```text
-https://xxxx.ngrok-free.app
-```
-🎉 **Result:** The custom **E6 Enterprise Web Portal** homepage displays on any device anywhere in the world!
-
----
-
-## 🛠️ Troubleshooting Guide for Step 3
-
-### 1. Error: Default blue IIS Welcome Page (`iisstart.htm`) displays instead of custom website
-- **Cause:** `index.html` does not exist in `C:\inetpub\wwwroot\`, or it was saved with a hidden `.txt` extension (`index.html.txt`). IIS skips missing files and serves `iisstart.htm`.
-- **Fix:** 
-  1. Open File Explorer on Server → go to `C:\inetpub\wwwroot\`.
-  2. Click **View → Show → File name extensions** (ensure `.txt` extensions are visible).
-  3. Rename `index.html.txt` to **`index.html`**.
-  4. In browser, press **`Ctrl + F5`** (Hard Refresh) to reload!
-
-### 2. Error: "HTTP 404 - File Not Found"
-- **Cause:** `index.html` is missing or saved with wrong extension (`index.html.txt`).
-- **Fix:** In `C:\inetpub\wwwroot\`, ensure file extensions are shown (*File Explorer → View → Show → File name extensions*). Rename to `index.html`.
-
-### 2. Error: "This page can't be displayed" / Connection Timeout
-- **Cause:** Windows Firewall blocking Port 80 on server.
-- **Fix:** Run `netsh advfirewall firewall add rule name="Allow World Wide Web HTTP Port 80" dir=in action=allow protocol=TCP localport=80` on server.
-
-### 3. Error: "HTTP 403 - Forbidden"
-- **Cause:** No Default Document defined or directory browsing disabled.
-- **Fix:** In IIS Manager → click Default Web Site → double-click Default Document → add `index.html` to top.
+### 3. Error: `HTTP 500.19 - 0x80070021`
+- **Cause:** Handlers section locked at IIS server level.
+- **Fix:** Run `%windir%\system32\inetsrv\appcmd.exe unlock config -section:system.webServer/handlers` on server.
 
 ---
 
