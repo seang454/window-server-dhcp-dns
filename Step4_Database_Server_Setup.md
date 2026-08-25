@@ -46,6 +46,40 @@
 
 ---
 
+## 🏗️ Master Multitenant Architecture & User Location Diagram
+
+Where does each user account live inside Oracle Database 19c?
+
+```
+                      ORACLE 19c USER LOCATION HIERARCHY
+                      
+  =================================================================================
+  │ 🏢 CONTAINER DATABASE (CDB$ROOT - SID: orcl)                                  │
+  │                                                                               │
+  │  👑 Global System Accounts & Common Users (Exist Server-Wide):                │
+  │     ├── SYS                  <── (Root Superuser / SYSDBA)                    │
+  │     ├── SYSTEM               <── (Global DBA Admin)                           │
+  │     └── c##global_admin      <── (Custom Common User / Container = ALL)       │
+  ================================───────┬─────────────────────────────────────────
+                                         │
+                 ┌───────────────────────┴───────────────────────┐
+                 │                                               │
+  ===============▼================               ================▼================
+  │ 🧬 PDB$SEED (Template PDB)   │               │ 📁 ORCLPDB (Service: orclpdb) │
+  │                              │               │                               │
+  │  (System Read-Only Template  │               │  🏢 Local Accounts & Schemas: │
+  │   used to clone new PDBs)    │               │     ├── PDBADMIN              │
+  │                              │               │     ├── HR                    │
+  │                              │               │     └── portfolio_user        │
+  ================================               =================================
+```
+
+### 📊 Summary of User Locations:
+1. **`CDB$ROOT` (Container Level):** Stores **`SYS`**, **`SYSTEM`**, and **`c##...`** common users. They have visibility across the entire server.
+2. **`ORCLPDB` (Pluggable Database Level):** Stores **`PDBADMIN`**, **`HR`**, and **`portfolio_user`**. They stay strictly inside `orclpdb` and cannot see other PDBs.
+
+---
+
 ## 🧠 Master Categorized Breakdown of Oracle Database Concepts
 
 To master Oracle Database before setup, concepts are categorized into 5 Core Categories:
