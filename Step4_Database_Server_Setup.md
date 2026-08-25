@@ -238,103 +238,27 @@ PowerShell returns `Ok.`.
 
 ---
 
-### ⚙️ Complete Step-by-Step Oracle 19c Installer Breakdown (Step 1 to Step 17)
+### ⚙️ Complete Step-by-Step Oracle 19c Installer Breakdown & Technical Rationale
 
-#### Step 1 of 17: Select Configuration Option
-* 🎯 **Objective & Purpose:** To create a starter enterprise database instance during software installation.
-* ⚙️ **Configuration Action:** Select **`Create and configure a single instance database`** → click **Next >**.
-* ✅ **Verification:** Installer advances to Step 2.
-
-#### Step 2 of 17: Select System Class
-* 🎯 **Objective & Purpose:** To choose the operating environment class for performance and memory tuning.
-* ⚙️ **Configuration Action:** Select **`Server class`** → click **Next >**.
-* 🛠️ **Why:** Server class enables enterprise multitenant architecture, listener tuning, and Active Directory Domain Controller support.
-
-#### Step 3 of 17: Select Install Type
-* 🎯 **Objective & Purpose:** To unlock advanced security, character set, and Oracle Home User options.
-* ⚙️ **Configuration Action:** Select **`Advanced install`** → click **Next >**.
-* 🛠️ **Why:** Advanced install lets us select `Windows Built-in Account` to bypass Virtual Account restrictions (`INS-35156`) on Domain Controllers.
-
-#### Step 4 of 17: Select Database Edition
-* 🎯 **Objective & Purpose:** To choose between Enterprise Edition and Standard Edition 2.
-* ⚙️ **Configuration Action:** Select **`Enterprise Edition`** → click **Next >**.
-* 🛠️ **Why:** Enterprise Edition provides full partitioning, parallel SQL execution, and unlimited pluggable database capabilities.
-
-#### Step 5 of 17: Specify Oracle Home User
-* 🎯 **Objective & Purpose:** To specify the Windows service user for running Oracle background processes.
-* ⚙️ **Configuration Action:**
-  1. Select **`Use Windows Built-in Account`** (`NT AUTHORITY\SYSTEM`).
-  2. Click **Next >**.
-  3. When warning `[INS-35810]` appears (*"Are you sure you want to continue?"*), click **Yes**!
-* 🛠️ **Why:** Bypasses Virtual Account error `INS-35156` on Active Directory Domain Controllers cleanly.
-
-#### Step 6 of 17: Specify Installation Location
-* 🎯 **Objective & Purpose:** To define the Oracle Base directory and Software Location (`ORACLE_HOME`).
-* ⚙️ **Configuration Action:**
-  - **Oracle base:** `C:\server\app\Administrator`
-  - **Software location:** `C:\server\oracle\WINDOWS.X64_193000_db_home`
-  - Click **Next >**.
-
-#### Step 7 of 17: Select Configuration Type
-* 🎯 **Objective & Purpose:** To select the workload pattern for the starter database.
-* ⚙️ **Configuration Action:** Select **`General Purpose / Transaction Processing`** → click **Next >**.
-* 🛠️ **Why:** Optimized for online web applications (Next.js), user logins, and transaction tables (OLTP).
-
-#### Step 8 of 17: Specify Database Identifiers
-* 🎯 **Objective & Purpose:** To set the unique global database name, System Identifier (SID), and Pluggable Database (PDB).
-* ⚙️ **Configuration Action:**
-  - **Global database name:** `orcl.e6.local` *(automatically detects AD domain `e6.local`)*
-  - **Oracle system identifier (SID):** `orcl`
-  - Check ✅ **`Create as Container database`**
-  - **Pluggable database name:** `orclpdb`
-  - Click **Next >**.
-
-#### Step 9 of 17: Specify Configuration Options
-* 🎯 **Objective & Purpose:** To configure RAM memory allocation, Unicode character sets, and sample schemas.
-* ⚙️ **Configuration Action:**
-  1. **Memory tab:** Allocate memory slider set to `2483 MB (40%)`.
-  2. **Character sets tab:** Select **`Use Unicode (AL32UTF8)`**.
-  3. **Sample schemas tab:** Check ✅ **`Install sample schemas in the database`** *(installs `HR` and `SCOTT` sample tables)*.
-  4. Click **Next >**.
-
-#### Step 10 of 17: Specify Database Storage Options
-* 🎯 **Objective & Purpose:** To specify the physical storage mechanism for database datafiles.
-* ⚙️ **Configuration Action:** Select **`File system`** → location: `C:\server\app\Administrator\oradata` → click **Next >**.
-
-#### Step 11 of 17: Specify Management Options
-* 🎯 **Objective & Purpose:** To configure Enterprise Manager Cloud Control registration.
-* ⚙️ **Configuration Action:** Leave `Register with Enterprise Manager (EM) Cloud Control` unchecked → click **Next >**.
-* 🛠️ **Why:** Oracle 19c automatically provides local EM Database Express on Port 5500 out-of-the-box.
-
-#### Step 12 of 17: Specify Recovery Options
-* 🎯 **Objective & Purpose:** To configure automated backup and recovery locations.
-* ⚙️ **Configuration Action:** Leave recovery options default → click **Next >**.
-
-#### Step 13 of 17: Specify Schema Passwords
-* 🎯 **Objective & Purpose:** To define administrative master passwords for `SYS`, `SYSTEM`, and `PDBADMIN` accounts.
-* ⚙️ **Configuration Action:**
-  1. Select **`Use the same password for all accounts`**.
-  2. **Password:** `OraclePass123`
-  3. **Confirm password:** `OraclePass123`
-  4. Click **Next >**. *(If password complexity popup appears, click **Yes**)*.
-
-#### Step 14 of 17: Prerequisite Checks
-* 🎯 **Objective & Purpose:** System automatically validates Windows version, edition, environment variables, memory, and privileges.
-* ⚙️ **Configuration Action:** All 5 checks display **Passed** ✅ → click **Next >**.
-
-#### Step 15 of 17: Summary
-* 🎯 **Objective & Purpose:** Displays final technical configuration tree before writing files.
-* ⚙️ **Configuration Action:** Review settings (`NT AUTHORITY\SYSTEM`, `orcl.e6.local`, `orclpdb`, `AL32UTF8`) → click **Install**!
-
-#### Step 16 of 17: Install Product
-* 🎯 **Objective & Purpose:** Installer copies software binaries, compiles DLLs, and executes Database Configuration Assistant (DBCA) to create `orcl` database from 0% to 100%.
-* ⚙️ **Configuration Action:** Watch progress bar. *(If popup asks "Do you want to exit?", click **No**)*.
-
-#### Step 17 of 17: Finish (Completed ✅)
-* 🎯 **Objective & Purpose:** Displays final confirmation and Enterprise Manager Express URL.
-* ⚙️ **Configuration Action:**
-  - Displays: *"The configuration of Oracle Database was successful. Oracle Enterprise Manager Database Express URL: https://WIN-J17IMHCEMA9.e6.local:5500/em"*
-  - Click **Close**!
+| Step | Wizard Screen | Selected Option / Choice | Technical Reason & Justification |
+|:---|:---|:---|:---|
+| **Step 1** | **Configuration Option** | `Create and configure a single instance database` | Automatically creates a ready-to-use starter database instance (`orcl`) during software installation, saving us from having to run DBCA manually later. |
+| **Step 2** | **System Class** | `Server class` | Unlocks enterprise memory (SGA/PGA) tuning, Pluggable Databases (PDBs), and full Active Directory Domain Controller integration for Windows Server 2022. |
+| **Step 3** | **Install Type** | `Advanced install` | Allows custom selection of the **Oracle Home User** (`Windows Built-in Account`), which is required to bypass Virtual Account restrictions (`INS-35156`) on Domain Controllers. |
+| **Step 4** | **Database Edition** | `Enterprise Edition` | Provides full industry-standard database features (partitioning, parallel SQL queries, multitenant architecture) with zero limitations. |
+| **Step 5** | **Oracle Home User** | `Use Windows Built-in Account` (`NT AUTHORITY\SYSTEM`) | Bypasses error **`INS-35156`** on Active Directory Domain Controllers 100%! Allows Windows to run Oracle services in the background automatically on system boot. |
+| **Step 6** | **Installation Location** | `C:\server\app\Administrator` (Base)<br>`C:\server\oracle\WINDOWS.X64_193000_db_home` (Home) | Follows Oracle's Optimal Flexible Architecture (OFA) directory structure for Windows, ensuring clean separation of binaries and data files. |
+| **Step 7** | **Configuration Type** | `General Purpose / Transaction Processing` | Optimized for Online Transaction Processing (OLTP) applications (like Next.js web applications, portfolio forms, user logins, and web API queries). |
+| **Step 8** | **Database Identifiers** | Global DB: `orcl.e6.local`<br>SID: `orcl`<br>PDB: `orclpdb` | Automatically binds the database to your Active Directory domain (`e6.local`) and creates a Pluggable Database (`orclpdb`) for multi-tenant isolation. |
+| **Step 9** | **Configuration Options** | RAM: `2483 MB`<br>Charset: `AL32UTF8`<br>Sample Schemas: Checked ✅ | • **RAM:** Prevents Oracle from consuming all server memory.<br>• **AL32UTF8:** Universal UTF-8 Unicode character set supporting all global languages.<br>• **Sample Schemas:** Installs classic `HR` tables for testing SQL. |
+| **Step 10** | **Database Storage** | `File system` (`C:\server\app\Administrator\oradata`) | Stores datafiles directly inside standard Windows NTFS folders on the C drive. |
+| **Step 11** | **Management Options** | Unchecked EM Cloud Control | Enables local lightweight **Oracle Enterprise Manager Express** on Port 5500 (`https://localhost:5500/em`) without needing extra management servers. |
+| **Step 12** | **Recovery Options** | Default Recovery | Uses standard fast recovery area (FRA) settings without requiring dedicated tape drive hardware. |
+| **Step 13** | **Schema Passwords** | `Use the same password for all accounts` (`OraclePass123`) | Sets a single, secure master administrative password for `SYS`, `SYSTEM`, and `PDBADMIN` accounts for easy management. |
+| **Step 14** | **Prerequisite Checks** | Passed All Checks ✅ | Confirms OS architecture, admin privileges, registry keys, and memory meet Oracle 19c Enterprise specifications. |
+| **Step 15** | **Summary** | Click `Install` | Review and lock in all 14 configuration decisions before compilation starts. |
+| **Step 16** | **Install Product** | Executed DBCA (0% to 100%) | Automatically compiled Oracle DLL binaries, registered Windows Services (`OracleServiceORCL` & `OracleOraDB19Home1TNSListener`), and built datafiles. |
+| **Step 17** | **Finish** | Click `Close` | Displays final confirmation and EM Express management URL (`https://WIN-J17IMHCEMA9.e6.local:5500/em`). |
 
 ---
 
