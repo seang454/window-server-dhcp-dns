@@ -1,10 +1,11 @@
-# Step 4: Database Server (PostgreSQL & Oracle Database) Setup Guide
+# Step 4: Database Server (PostgreSQL & Oracle Database 19c) Setup Guide
 
 **Windows Server 2022 on VMware Workstation**  
 **Domain: e6.local**  
 **Server IP: 192.168.1.10**  
 **PostgreSQL Port: 5432**  
 **Oracle DB Listener Port: 1521**  
+**Oracle EM Express Port: 5500**  
 
 ---
 
@@ -36,29 +37,62 @@
                     │  │ └── database: finance_db         │  │
                     │  └──────────────────────────────────┘  │
                     │  ┌──────────────────────────────────┐  │
-                    │  │ Oracle Database XE (Port 1521)   │  │
-                    │  │ ├── Pluggable DB: XEPDB1         │  │
-                    │  │ └── Pluggable DB: PORTFOLIO_PDB  │  │
+                    │  │ Oracle 19c Enterprise (Port 1521)│  │
+                    │  │ ├── CDB: orcl.e6.local           │  │
+                    │  │ └── PDB: orclpdb                 │  │
                     │  └──────────────────────────────────┘  │
                     └────────────────────────────────────────┘
 ```
 
 ---
 
-### Multi-Database Hosting Architecture (One Server ──► Multiple Databases)
+## 🔄 Master Deployment Flowchart: Enterprise Database Server Setup
+
+```
+                    MASTER DATABASE SERVER DEPLOYMENT FLOWCHART
+                        
+ [ PHASE 1: DATABASE ENGINE INSTALLATION (pro-win-server) ]
+   1. Install PostgreSQL 18 Server (`C:\Program Files\PostgreSQL\18`)
+   2. Install Oracle Database 19c Enterprise (`C:\server\oracle\WINDOWS.X64_193000_db_home`)
+            │
+            ▼
+ [ PHASE 2: NETWORK LISTENER & FIREWALL CONFIGURATION ]
+   1. Configure PostgreSQL `postgresql.conf` (`listen_addresses = '*'`)
+   2. Configure PostgreSQL `pg_hba.conf` (`host all all 192.168.1.0/24 scram-sha-256`)
+   3. Verify Oracle Listener Status (`lsnrctl status` on Port 1521)
+   4. Open Inbound Windows Firewall Ports: 5432 (PostgreSQL) & 1521 (Oracle)
+            │
+            ▼
+ [ PHASE 3: DATABASE & SECURITY USER PROVISIONING ]
+   1. Create application user (`portfolio_user`) with strong password
+   2. Create application database (`portfolio_db`) owned by `portfolio_user`
+   3. Provision Oracle Pluggable Database (`orclpdb`) & tablespaces
+            │
+            ▼
+ [ PHASE 4: APPLICATION & CLIENT INTEGRATION ]
+   1. Connect Next.js application via Prisma/pg driver (`postgresql://portfolio_user:pass@localhost:5432/portfolio_db`)
+   2. Connect Client VM management tools (pgAdmin 4, DBeaver, SQL Developer)
+            │
+            ▼
+ 🎉 SUCCESS! Enterprise Multi-Tenant Relational Databases Running 24/7!
+```
+
+---
+
+## 📊 Multi-Database Hosting Architecture (One Server ──► Multiple Databases)
 
 A single Database Server instance running on Windows Server can host **dozens or hundreds of completely isolated databases** simultaneously:
 
 | Database Engine | Example Databases Hosted on 1 Server | Security & Data Isolation |
 |:---|:---|:---|
 | 🐘 **PostgreSQL (Port 5432)** | • `portfolio_db`<br>• `hr_system_db`<br>• `finance_db`<br>• `e_commerce_db` | Each database has its own isolated tables, schema, and dedicated user credentials (`portfolio_user`, `hr_user`). |
-| 🔴 **Oracle DB (Port 1521)** | • `XEPDB1` (Pluggable DB 1)<br>• `PORTFOLIO_PDB` (Pluggable DB 2)<br>• `ERP_PDB` (Pluggable DB 3) | Uses Oracle Multitenant Architecture (PDBs) to separate corporate business applications inside 1 Container Database (CDB). |
+| 🔴 **Oracle DB 19c (Port 1521)** | • `orcl.e6.local` (Container DB)<br>• `orclpdb` (Pluggable DB 1)<br>• `hrpdb` (Pluggable DB 2) | Uses Oracle Multitenant Architecture (PDBs) to separate corporate business applications inside 1 Container Database (CDB). |
 
 > **Key Enterprise Advantage:** Hosting multiple databases on 1 server consolidates CPU, RAM, and storage, while enforcing strict user credential isolation so no application can read another database's tables!
 
 ---
 
-## 📊 Security Model: Local LAN & Web Application Isolation
+## 🔒 Security Model: Local LAN & Web Application Isolation
 
 In enterprise environments, database engines (PostgreSQL and Oracle) are kept hidden inside the **Local LAN Zone** behind web servers:
 
@@ -72,29 +106,29 @@ In enterprise environments, database engines (PostgreSQL and Oracle) are kept hi
 
 ---
 
-## 🚀 Step-by-Step Detailed Configuration Guide
+## 🚀 Part 1: PostgreSQL 18 Setup Guide (Completed ✅)
 
 ---
 
 ### Step 1: Install PostgreSQL Database Server on Server VM (`pro-win-server`)
 
 #### 🎯 Objective & Purpose
-To install PostgreSQL Server engine (v16+) and pgAdmin 4 management console on `pro-win-server`.
+To install PostgreSQL Server engine (v18+) and pgAdmin 4 management console on `pro-win-server`.
 
 #### 🛠️ What it is for
 PostgreSQL is an open-source relational database management system (RDBMS) that stores structured tables, JSON documents, and relational data for web applications.
 
 #### ⚙️ Configuration Steps
 1. On `pro-win-server`, download **PostgreSQL Windows x64 Installer** from `https://www.postgresql.org/download/windows/`.
-2. Run `postgresql-16.x-x64.exe` as Administrator.
-3. Select installation directory: `C:\Program Files\PostgreSQL\16`.
+2. Run `postgresql-18.x-x64.exe` as Administrator.
+3. Select installation directory: `C:\Program Files\PostgreSQL\18`.
 4. Select components: Check ✅ **PostgreSQL Server**, ✅ **pgAdmin 4**, ✅ **Command Line Tools**.
 5. Set password for superuser `postgres` *(e.g., `Admin123!`)*.
 6. Set Port: `5432`.
 7. Click **Next → Next → Install** → wait for completion → click **Finish**.
 
 #### ✅ Expected Verification Result
-Opening Command Prompt on `pro-win-server` and running `psql -U postgres -h localhost -p 5432` prompts for password and opens `postgres=#` SQL shell.
+Opening Command Prompt on `pro-win-server` and running `"C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -h localhost -p 5432` prompts for password and opens `postgres=#` SQL shell.
 
 ---
 
@@ -104,22 +138,22 @@ Opening Command Prompt on `pro-win-server` and running `psql -U postgres -h loca
 To configure PostgreSQL to listen on all server IP network interfaces (`0.0.0.0`) and grant client machines on subnet `192.168.1.0/24` permission to authenticate.
 
 #### 🛠️ What it is for
-By default, PostgreSQL listens only on `localhost` (`127.0.0.1`). Updating `listen_addresses = '*'` and adding `192.168.1.0/24` to `pg_hba.conf` allows Next.js backend scripts and Client VM tools (pgAdmin/DBeaver) to connect.
+By default, PostgreSQL listens only on `localhost` (`127.0.0.1`). Updating `listen_addresses = '*'` and adding `192.168.1.0/24` to `pg_hba.conf` allows Next.js backend scripts and Client VM tools (pgAdmin/DBeaver) to connect over the LAN.
 
 #### ⚙️ Configuration Steps
-1. Open `C:\Program Files\PostgreSQL\16\data\postgresql.conf` in Notepad as Admin.
+1. Open `C:\Program Files\PostgreSQL\18\data\postgresql.conf` in Notepad as Admin.
 2. Search for `listen_addresses` → set:
 ```text
 listen_addresses = '*'
 ```
 3. Save `postgresql.conf`.
-4. Open `C:\Program Files\PostgreSQL\16\data\pg_hba.conf` in Notepad as Admin.
+4. Open `C:\Program Files\PostgreSQL\18\data\pg_hba.conf` in Notepad as Admin.
 5. Scroll to the bottom and add this line:
 ```text
 host    all             all             192.168.1.0/24          scram-sha-256
 ```
 6. Save `pg_hba.conf`.
-7. Open Services (`services.msc`) → right-click **postgresql-x64-16** → click **Restart**.
+7. Open Services (`services.msc`) → right-click **postgresql-x64-18** → click **Restart**.
 
 #### ✅ Expected Verification Result
 PostgreSQL service restarts cleanly and listens on `0.0.0.0:5432`.
@@ -135,8 +169,8 @@ To create dedicated database `portfolio_db` and application user `portfolio_user
 Prevents web applications from running as superuser `postgres` (Least Privilege Principle).
 
 #### ⚙️ Configuration Steps
-1. Open **pgAdmin 4** on `pro-win-server` (**Start → PostgreSQL 16 → pgAdmin 4**).
-2. Enter master password → expand **Servers → PostgreSQL 16**.
+1. Open **pgAdmin 4** on `pro-win-server` (**Start → PostgreSQL 18 → pgAdmin 4**).
+2. Enter master password → expand **Servers → PostgreSQL 18**.
 3. Right-click **Login/Group Roles → Create → Login/Group Role...**:
    - **Name:** `portfolio_user`
    - **Definition → Password:** `PortfolioPass123!`
@@ -170,50 +204,154 @@ PowerShell returns `Ok.`.
 
 ---
 
-### Step 5: Install & Configure Oracle Database Express Edition (XE)
-
-#### 🎯 Objective & Purpose
-To install Oracle Database 21c/19c XE and configure Oracle Listener on Port 1521.
-
-#### 🛠️ What it is for
-Oracle Database is an enterprise-grade relational database engine used widely in corporate banking, ERPs, and enterprise infrastructure.
-
-#### ⚙️ Configuration Steps
-1. On `pro-win-server`, download **Oracle Database Express Edition (XE)** from `https://www.oracle.com/database/technologies/xe-downloads.html`.
-2. Extract zip file and run `setup.exe` as Administrator.
-3. Accept license agreement → select destination: `C:\app\Administrator\product\21c\dbhomeXE`.
-4. Enter password for `SYS` and `SYSTEM` accounts *(e.g., `OraclePass123!`)*.
-5. Click **Install** → wait for setup completion.
-6. Open Command Prompt (Admin) and verify Oracle Listener status:
-```cmd
-lsnrctl status
-```
-
-#### ✅ Expected Verification Result
-`lsnrctl status` displays Listener running on Port `1521` with SID `XE` and Service `XEPDB1`.
+## 🔴 Part 2: Oracle Database 19c Enterprise Edition Full 17-Step Guide (Completed ✅)
 
 ---
 
-### Step 6: Configure Firewall Rule & Test Oracle Connection
+### 📖 Oracle 19c Account Hierarchy & Multitenant Architecture
+
+```
+                      ORACLE 19c DATABASE INSTANCE (orcl)
+                      
+   ┌──────────────────────────────────────────────────────────────────┐
+   │                  CONTAINER DATABASE (CDB$ROOT)                  │
+   │                                                                  │
+   │  👑 SYS (sys as sysdba)     ──► Controls SGA/PGA RAM Memory,     │
+   │                                  Disk Storage, & Kernel Services.│
+   │  🛡️ SYSTEM                   ──► Creates Users, Tablespaces,     │
+   │                                  and manages Global DBAs.        │
+   └─────────────────────────────────┬────────────────────────────────┘
+                                     │
+                 ┌───────────────────┴───────────────────┐
+                 │                                       │
+   ┌─────────────▼─────────────┐           ┌─────────────▼─────────────┐
+   │ PLUGGABLE DATABASE (PDB1) │           │ PLUGGABLE DATABASE (PDB2) │
+   │          orclpdb          │           │           hrpdb           │
+   │                           │           │                           │
+   │ 🏢 PDBADMIN               │           │ 🏢 PDBADMIN               │
+   │   (Manages PDB1 schema)   │           │   (Manages PDB2 schema)   │
+   │                           │           │                           │
+   │ 📁 portfolio_user         │           │ 📁 hr_user                │
+   │   (Portfolio tables)      │           │   (Employee tables)       │
+   └───────────────────────────┘           └───────────────────────────┘
+```
+
+---
+
+### ⚙️ Complete Step-by-Step Oracle 19c Installer Breakdown (Step 1 to Step 17)
+
+#### Step 1 of 17: Select Configuration Option
+* 🎯 **Objective & Purpose:** To create a starter enterprise database instance during software installation.
+* ⚙️ **Configuration Action:** Select **`Create and configure a single instance database`** → click **Next >**.
+* ✅ **Verification:** Installer advances to Step 2.
+
+#### Step 2 of 17: Select System Class
+* 🎯 **Objective & Purpose:** To choose the operating environment class for performance and memory tuning.
+* ⚙️ **Configuration Action:** Select **`Server class`** → click **Next >**.
+* 🛠️ **Why:** Server class enables enterprise multitenant architecture, listener tuning, and Active Directory Domain Controller support.
+
+#### Step 3 of 17: Select Install Type
+* 🎯 **Objective & Purpose:** To unlock advanced security, character set, and Oracle Home User options.
+* ⚙️ **Configuration Action:** Select **`Advanced install`** → click **Next >**.
+* 🛠️ **Why:** Advanced install lets us select `Windows Built-in Account` to bypass Virtual Account restrictions (`INS-35156`) on Domain Controllers.
+
+#### Step 4 of 17: Select Database Edition
+* 🎯 **Objective & Purpose:** To choose between Enterprise Edition and Standard Edition 2.
+* ⚙️ **Configuration Action:** Select **`Enterprise Edition`** → click **Next >**.
+* 🛠️ **Why:** Enterprise Edition provides full partitioning, parallel SQL execution, and unlimited pluggable database capabilities.
+
+#### Step 5 of 17: Specify Oracle Home User
+* 🎯 **Objective & Purpose:** To specify the Windows service user for running Oracle background processes.
+* ⚙️ **Configuration Action:**
+  1. Select **`Use Windows Built-in Account`** (`NT AUTHORITY\SYSTEM`).
+  2. Click **Next >**.
+  3. When warning `[INS-35810]` appears (*"Are you sure you want to continue?"*), click **Yes**!
+* 🛠️ **Why:** Bypasses Virtual Account error `INS-35156` on Active Directory Domain Controllers cleanly.
+
+#### Step 6 of 17: Specify Installation Location
+* 🎯 **Objective & Purpose:** To define the Oracle Base directory and Software Location (`ORACLE_HOME`).
+* ⚙️ **Configuration Action:**
+  - **Oracle base:** `C:\server\app\Administrator`
+  - **Software location:** `C:\server\oracle\WINDOWS.X64_193000_db_home`
+  - Click **Next >**.
+
+#### Step 7 of 17: Select Configuration Type
+* 🎯 **Objective & Purpose:** To select the workload pattern for the starter database.
+* ⚙️ **Configuration Action:** Select **`General Purpose / Transaction Processing`** → click **Next >**.
+* 🛠️ **Why:** Optimized for online web applications (Next.js), user logins, and transaction tables (OLTP).
+
+#### Step 8 of 17: Specify Database Identifiers
+* 🎯 **Objective & Purpose:** To set the unique global database name, System Identifier (SID), and Pluggable Database (PDB).
+* ⚙️ **Configuration Action:**
+  - **Global database name:** `orcl.e6.local` *(automatically detects AD domain `e6.local`)*
+  - **Oracle system identifier (SID):** `orcl`
+  - Check ✅ **`Create as Container database`**
+  - **Pluggable database name:** `orclpdb`
+  - Click **Next >**.
+
+#### Step 9 of 17: Specify Configuration Options
+* 🎯 **Objective & Purpose:** To configure RAM memory allocation, Unicode character sets, and sample schemas.
+* ⚙️ **Configuration Action:**
+  1. **Memory tab:** Allocate memory slider set to `2483 MB (40%)`.
+  2. **Character sets tab:** Select **`Use Unicode (AL32UTF8)`**.
+  3. **Sample schemas tab:** Check ✅ **`Install sample schemas in the database`** *(installs `HR` and `SCOTT` sample tables)*.
+  4. Click **Next >**.
+
+#### Step 10 of 17: Specify Database Storage Options
+* 🎯 **Objective & Purpose:** To specify the physical storage mechanism for database datafiles.
+* ⚙️ **Configuration Action:** Select **`File system`** → location: `C:\server\app\Administrator\oradata` → click **Next >**.
+
+#### Step 11 of 17: Specify Management Options
+* 🎯 **Objective & Purpose:** To configure Enterprise Manager Cloud Control registration.
+* ⚙️ **Configuration Action:** Leave `Register with Enterprise Manager (EM) Cloud Control` unchecked → click **Next >**.
+* 🛠️ **Why:** Oracle 19c automatically provides local EM Database Express on Port 5500 out-of-the-box.
+
+#### Step 12 of 17: Specify Recovery Options
+* 🎯 **Objective & Purpose:** To configure automated backup and recovery locations.
+* ⚙️ **Configuration Action:** Leave recovery options default → click **Next >**.
+
+#### Step 13 of 17: Specify Schema Passwords
+* 🎯 **Objective & Purpose:** To define administrative master passwords for `SYS`, `SYSTEM`, and `PDBADMIN` accounts.
+* ⚙️ **Configuration Action:**
+  1. Select **`Use the same password for all accounts`**.
+  2. **Password:** `OraclePass123`
+  3. **Confirm password:** `OraclePass123`
+  4. Click **Next >**. *(If password complexity popup appears, click **Yes**)*.
+
+#### Step 14 of 17: Prerequisite Checks
+* 🎯 **Objective & Purpose:** System automatically validates Windows version, edition, environment variables, memory, and privileges.
+* ⚙️ **Configuration Action:** All 5 checks display **Passed** ✅ → click **Next >**.
+
+#### Step 15 of 17: Summary
+* 🎯 **Objective & Purpose:** Displays final technical configuration tree before writing files.
+* ⚙️ **Configuration Action:** Review settings (`NT AUTHORITY\SYSTEM`, `orcl.e6.local`, `orclpdb`, `AL32UTF8`) → click **Install**!
+
+#### Step 16 of 17: Install Product
+* 🎯 **Objective & Purpose:** Installer copies software binaries, compiles DLLs, and executes Database Configuration Assistant (DBCA) to create `orcl` database from 0% to 100%.
+* ⚙️ **Configuration Action:** Watch progress bar. *(If popup asks "Do you want to exit?", click **No**)*.
+
+#### Step 17 of 17: Finish (Completed ✅)
+* 🎯 **Objective & Purpose:** Displays final confirmation and Enterprise Manager Express URL.
+* ⚙️ **Configuration Action:**
+  - Displays: *"The configuration of Oracle Database was successful. Oracle Enterprise Manager Database Express URL: https://WIN-J17IMHCEMA9.e6.local:5500/em"*
+  - Click **Close**!
+
+---
+
+### Step 6: Configure Firewall Inbound Rule for Oracle Port 1521
 
 #### 🎯 Objective & Purpose
-To open TCP Port 1521 in Windows Firewall and connect via SQL*Plus or SQL Developer.
-
-#### 🛠️ What it is for
-Allows client machines and application services to execute Oracle SQL queries.
+To open inbound TCP Port 1521 in Windows Defender Firewall for local LAN connections.
 
 #### ⚙️ Configuration Steps
-1. Open PowerShell (Admin) on `pro-win-server` and run:
+Open **PowerShell as Administrator** on `pro-win-server` and run:
+
 ```powershell
 netsh advfirewall firewall add rule name="Allow Oracle Database Port 1521" dir=in action=allow protocol=TCP localport=1521
 ```
-2. Open Command Prompt and test SQL*Plus login:
-```cmd
-sqlplus sys/OraclePass123!@localhost:1521/XEPDB1 as sysdba
-```
 
 #### ✅ Expected Verification Result
-SQL*Plus connects successfully and displays `Connected to: Oracle Database 21c Express Edition`.
+Opening Command Prompt and running `lsnrctl status` displays Listener running on Port `1521` with SID `orcl` and Service `orclpdb`.
 
 ---
 
@@ -224,7 +362,8 @@ SQL*Plus connects successfully and displays `Connected to: Oracle Database 21c E
 Get-Service -Name postgresql*
 Test-NetConnection -ComputerName 192.168.1.10 -Port 5432
 
-# Check Oracle Listener & Port
+# Check Oracle Listener & Services
+Get-Service -Name Oracle*
 lsnrctl status
 Test-NetConnection -ComputerName 192.168.1.10 -Port 1521
 ```
