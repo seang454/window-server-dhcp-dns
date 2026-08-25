@@ -178,6 +178,16 @@ To master Oracle Database before setup, concepts are categorized into 5 Core Cat
   - **TNS Listener (Port 1521):** The **Receptionist** sitting at the front desk.
   - **SID (`orcl`):** The **Master Building Identification Code**.
   - **Service Name (`orclpdb.e6.local`):** The **Room Number** (`Room 101`) where the guest actually wants to go.
+
+#### 📊 Deep-Dive Comparison: SID vs. Service Name
+| Feature | 🏷️ SID (System Identifier) | 🌐 Service Name |
+|:---|:---|:---|
+| **What it represents** | The unique internal **RAM Instance process** running on the OS (`orcl`). | The global **Network Service identifier** for a Pluggable Database (`orclpdb.e6.local`). |
+| **Architecture Level** | Physical / OS Memory Tier | Logical / Network Service Tier |
+| **Primary Target** | Root Container (`CDB$ROOT`) | Pluggable Database (`PDB`) |
+| **Primary Users** | Local OS DBAs (`sqlplus / as sysdba`) | DBeaver, Web Applications (Next.js), Java Drivers |
+| **High Availability** | ❌ Tied to 1 single server instance | ✅ Supports Failover & RAC Clustering |
+
 * 🛠️ **Real Oracle Implementation in our Lab:**
   - **Windows Service Name:** `OracleOraDB19Home1TNSListener`
   - **Host IP:** `192.168.1.10` | **Port:** `1521`
@@ -270,6 +280,28 @@ To master Oracle Database before setup, concepts are categorized into 5 Core Cat
 * 🎯 **Purpose:** Provides secure login credentials for web apps (Next.js), developers, and DBAs.
 
 ---
+
+#### 🛡️ Deep-Dive Comparison: `SYSTEM` vs. `PDBADMIN` Accounts
+
+| Feature | 🛡️ `SYSTEM` (Global DBA) | 👤 `PDBADMIN` (Local PDB Admin) |
+|:---|:---|:---|
+| **Account Scope** | **Global** (All PDBs + Root Container `CDB$ROOT`) | **Local** (Restricted strictly to `orclpdb`) |
+| **Building Analogy** | **Property Manager for ENTIRE Building** | **Manager of Apartment 101 ONLY** |
+| **Root Container (`orcl`) Access** | ✅ Full Access | ❌ **No Access** |
+| **Can Manage Other PDBs?** | ✅ Yes | ❌ **No Access** |
+| **Primary Purpose** | Server-wide DBA management & user creation. | Delegating admin rights for 1 specific tenant PDB to an app team. |
+
+---
+
+#### 🏷️ Target Address (`orclpdb.e6.local`) vs. User Identity (`PDBADMIN`)
+
+```text
+Host:      192.168.1.10
+Port:      1521
+Database:  orclpdb.e6.local   <── (WHERE: Target Network Service Name / Apartment Number)
+Username:  PDBADMIN           <── (WHO:   User Identity / Local Admin Keyholder)
+Password:  OraclePass123 
+```
 
 #### 3. How Custom Roles & Privileges Are Created
 * 🛠️ **Creation SQL Syntax:**
