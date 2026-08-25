@@ -1,4 +1,4 @@
-# Step 4: Database Server (PostgreSQL & Oracle Database 19c) Setup Guide
+# Step 4: Database Server (PostgreSQL & Oracle Database 19c) Setup & Deinstall Guide
 
 **Windows Server 2022 on VMware Workstation**  
 **Domain: e6.local**  
@@ -88,22 +88,6 @@ A single Database Server instance running on Windows Server can host **dozens or
 | 🐘 **PostgreSQL (Port 5432)** | • `portfolio_db`<br>• `hr_system_db`<br>• `finance_db`<br>• `e_commerce_db` | Each database has its own isolated tables, schema, and dedicated user credentials (`portfolio_user`, `hr_user`). |
 | 🔴 **Oracle DB 19c (Port 1521)** | • `orcl.e6.local` (Container DB)<br>• `orclpdb` (Pluggable DB 1)<br>• `hrpdb` (Pluggable DB 2) | Uses Oracle Multitenant Architecture (PDBs) to separate corporate business applications inside 1 Container Database (CDB). |
 
-> **Key Enterprise Advantage:** Hosting multiple databases on 1 server consolidates CPU, RAM, and storage, while enforcing strict user credential isolation so no application can read another database's tables!
-
----
-
-## 🔒 Security Model: Local LAN & Web Application Isolation
-
-In enterprise environments, database engines (PostgreSQL and Oracle) are kept hidden inside the **Local LAN Zone** behind web servers:
-
-| Layer | Component | Function & Security Scope |
-|:---|:---|:---|
-| **Tier 1 (Public / Edge)** | **Microsoft IIS (Port 80/443)** | Receives public user web traffic (`portfolio.e6.local`). |
-| **Tier 2 (Application)** | **Next.js Standalone (Port 3000)** | Renders React components, processes forms, executes SQL queries. |
-| **Tier 3 (Database)** | **PostgreSQL (5432) / Oracle (1521)** | Stores customer records, contact form messages, and portfolio logs. **Hidden from public internet.** |
-
-> **Security Rule:** Database ports (`5432` and `1521`) are **never** exposed directly to public internet router ports to prevent automated SQL injection and brute-force attacks.
-
 ---
 
 ## 🚀 Part 1: PostgreSQL 18 Setup Guide (Completed ✅)
@@ -115,11 +99,8 @@ In enterprise environments, database engines (PostgreSQL and Oracle) are kept hi
 #### 🎯 Objective & Purpose
 To install PostgreSQL Server engine (v18+) and pgAdmin 4 management console on `pro-win-server`.
 
-#### 🛠️ What it is for
-PostgreSQL is an open-source relational database management system (RDBMS) that stores structured tables, JSON documents, and relational data for web applications.
-
 #### ⚙️ Configuration Steps
-1. On `pro-win-server`, download **PostgreSQL Windows x64 Installer** from `https://www.postgresql.org/download/windows/`.
+1. Download **PostgreSQL Windows x64 Installer** from `https://www.postgresql.org/download/windows/`.
 2. Run `postgresql-18.x-x64.exe` as Administrator.
 3. Select installation directory: `C:\Program Files\PostgreSQL\18`.
 4. Select components: Check ✅ **PostgreSQL Server**, ✅ **pgAdmin 4**, ✅ **Command Line Tools**.
@@ -127,84 +108,20 @@ PostgreSQL is an open-source relational database management system (RDBMS) that 
 6. Set Port: `5432`.
 7. Click **Next → Next → Install** → wait for completion → click **Finish**.
 
-#### ✅ Expected Verification Result
-Opening Command Prompt on `pro-win-server` and running `"C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -h localhost -p 5432` prompts for password and opens `postgres=#` SQL shell.
-
 ---
 
 ### Step 2: Configure `postgresql.conf` & `pg_hba.conf` for Network Access
 
-#### 🎯 Objective & Purpose
-To configure PostgreSQL to listen on all server IP network interfaces (`0.0.0.0`) and grant client machines on subnet `192.168.1.0/24` permission to authenticate.
-
-#### 🛠️ What it is for
-By default, PostgreSQL listens only on `localhost` (`127.0.0.1`). Updating `listen_addresses = '*'` and adding `192.168.1.0/24` to `pg_hba.conf` allows Next.js backend scripts and Client VM tools (pgAdmin/DBeaver) to connect over the LAN.
-
 #### ⚙️ Configuration Steps
 1. Open `C:\Program Files\PostgreSQL\18\data\postgresql.conf` in Notepad as Admin.
-2. Search for `listen_addresses` → set:
-```text
-listen_addresses = '*'
-```
-3. Save `postgresql.conf`.
-4. Open `C:\Program Files\PostgreSQL\18\data\pg_hba.conf` in Notepad as Admin.
-5. Scroll to the bottom and add this line:
-```text
-host    all             all             192.168.1.0/24          scram-sha-256
-```
-6. Save `pg_hba.conf`.
-7. Open Services (`services.msc`) → right-click **postgresql-x64-18** → click **Restart**.
-
-#### ✅ Expected Verification Result
-PostgreSQL service restarts cleanly and listens on `0.0.0.0:5432`.
+2. Set: `listen_addresses = '*'`.
+3. Open `C:\Program Files\PostgreSQL\18\data\pg_hba.conf` in Notepad as Admin.
+4. Add line: `host all all 192.168.1.0/24 scram-sha-256`.
+5. Restart PostgreSQL service in `services.msc`.
 
 ---
 
-### Step 3: Create Portfolio Database & User in pgAdmin 4
-
-#### 🎯 Objective & Purpose
-To create dedicated database `portfolio_db` and application user `portfolio_user` with password credentials.
-
-#### 🛠️ What it is for
-Prevents web applications from running as superuser `postgres` (Least Privilege Principle).
-
-#### ⚙️ Configuration Steps
-1. Open **pgAdmin 4** on `pro-win-server` (**Start → PostgreSQL 18 → pgAdmin 4**).
-2. Enter master password → expand **Servers → PostgreSQL 18**.
-3. Right-click **Login/Group Roles → Create → Login/Group Role...**:
-   - **Name:** `portfolio_user`
-   - **Definition → Password:** `PortfolioPass123!`
-   - **Privileges:** Check ✅ **Can login?** → click **Save**.
-4. Right-click **Databases → Create → Database...**:
-   - **Database:** `portfolio_db`
-   - **Owner:** `portfolio_user` → click **Save**.
-
-#### ✅ Expected Verification Result
-`portfolio_db` appears under Databases in pgAdmin 4 owned by `portfolio_user`.
-
----
-
-### Step 4: Configure Firewall Inbound Rule for PostgreSQL Port 5432
-
-#### 🎯 Objective & Purpose
-To open inbound TCP Port 5432 in Windows Defender Firewall for local LAN connections.
-
-#### 🛠️ What it is for
-Permits client VMs (`192.168.1.100`) and internal services to reach PostgreSQL engine on Port 5432.
-
-#### ⚙️ Configuration Steps
-Open **PowerShell as Administrator** on `pro-win-server` and run:
-
-```powershell
-netsh advfirewall firewall add rule name="Allow PostgreSQL Port 5432" dir=in action=allow protocol=TCP localport=5432
-```
-
-#### ✅ Expected Verification Result
-PowerShell returns `Ok.`.
-
----
-
-## 🔴 Part 2: Oracle Database 19c Enterprise Edition Full 17-Step Guide (Completed ✅)
+## 🔴 Part 2: Oracle Database 19c Enterprise Edition Full Setup Guide (Completed ✅)
 
 ---
 
@@ -246,7 +163,7 @@ PowerShell returns `Ok.`.
 | **Step 2** | **System Class** | `Server class` | Unlocks enterprise memory (SGA/PGA) tuning, Pluggable Databases (PDBs), and full Active Directory Domain Controller integration for Windows Server 2022. |
 | **Step 3** | **Install Type** | `Advanced install` | Allows custom selection of the **Oracle Home User** (`Windows Built-in Account`), which is required to bypass Virtual Account restrictions (`INS-35156`) on Domain Controllers. |
 | **Step 4** | **Database Edition** | `Enterprise Edition` | Provides full industry-standard database features (partitioning, parallel SQL queries, multitenant architecture) with zero limitations. |
-| **Step 5** | **Oracle Home User** | `Use Windows Built-in Account` (`NT AUTHORITY\SYSTEM`) | Bypasses error **`INS-35156`** on Active Directory Domain Controllers 100%! Allows Windows to run Oracle services in the background automatically on system boot. |
+| **Step 5** | **Oracle Home User** | `Use Windows Built-in Account` (`NT AUTHORITY\SYSTEM`) | **Bypasses error `INS-35156` on Active Directory Domain Controllers 100%!** Allows Windows to run Oracle background services automatically on system boot. |
 | **Step 6** | **Installation Location** | `C:\server\app\Administrator` (Base)<br>`C:\server\oracle\WINDOWS.X64_193000_db_home` (Home) | Follows Oracle's Optimal Flexible Architecture (OFA) directory structure for Windows, ensuring clean separation of binaries and data files. |
 | **Step 7** | **Configuration Type** | `General Purpose / Transaction Processing` | Optimized for Online Transaction Processing (OLTP) applications (like Next.js web applications, portfolio forms, user logins, and web API queries). |
 | **Step 8** | **Database Identifiers** | Global DB: `orcl.e6.local`<br>SID: `orcl`<br>PDB: `orclpdb` | Automatically binds the database to your Active Directory domain (`e6.local`) and creates a Pluggable Database (`orclpdb`) for multi-tenant isolation. |
@@ -260,10 +177,9 @@ PowerShell returns `Ok.`.
 | **Step 16** | **Install Product** | Executed DBCA (0% to 100%) | Automatically compiled Oracle DLL binaries, registered Windows Services (`OracleServiceORCL` & `OracleOraDB19Home1TNSListener`), and built datafiles. |
 | **Step 17** | **Finish** | Click `Close` | Displays final confirmation and EM Express management URL (`https://WIN-J17IMHCEMA9.e6.local:5500/em`). |
 
-### Step 6: Configure Firewall Inbound Rule & Client LAN Access
+---
 
-#### 🎯 Objective & Purpose
-To open inbound TCP Port 1521 in Windows Defender Firewall and allow client computers (`192.168.1.100`) to connect over the LAN.
+### Step 6: Configure Firewall Inbound Rule & Client LAN Access
 
 #### ⚙️ Server Configuration Step (`pro-win-server`)
 Open **PowerShell as Administrator** on `pro-win-server` and run:
@@ -273,7 +189,6 @@ netsh advfirewall firewall add rule name="Allow Oracle Database Port 1521" dir=i
 ```
 
 #### 💻 Client Connection Parameters (`pro-win-client`)
-Client software (SQL Developer, DBeaver, VS Code, Next.js) connects using these details:
 
 | Parameter | Connection Value |
 |:---|:---|
@@ -284,12 +199,57 @@ Client software (SQL Developer, DBeaver, VS Code, Next.js) connects using these 
 | **Username** | `system` or `hr` or `portfolio_user` |
 | **Password** | `OraclePass123` |
 
-#### 🧪 Client Verification Test (from `pro-win-client`)
-Open **PowerShell** on `pro-win-client` (`192.168.1.100`) and run:
-```powershell
-Test-NetConnection -ComputerName 192.168.1.10 -Port 1521
+---
+
+## 🗑️ Part 3: Oracle 19c Deinstall & Clean Uninstallation Guide
+
+If you ever need to safely remove or uninstall Oracle Database 19c Enterprise Edition from your server:
+
 ```
-* **Expected Result:** `TcpTestSucceeded : True` 🟢.
+                  ORACLE 19c DEINSTALLATION FLOWCHART
+                        
+ 1. STOP ORACLE SERVICES ──► 2. RUN DEINSTALL.BAT ──► 3. CLEAN REGISTRY & DATA
+ (Stop `OracleServiceORCL`)  (`.../deinstall/deinstall.bat`)  (Delete ORACLE keys & oradata)
+```
+
+---
+
+### Step 1: Stop Oracle Windows Services
+
+Open **PowerShell as Administrator** on `pro-win-server` and run:
+
+```powershell
+Stop-Service -Name Oracle*
+```
+
+---
+
+### Step 2: Execute Oracle Deinstall Tool (`deinstall.bat`)
+
+Oracle 19c includes a dedicated command-line uninstallation tool (`deinstall.bat`) located inside your Oracle Home:
+
+1. Open **Command Prompt as Administrator** on `pro-win-server`.
+2. Navigate to the deinstall directory:
+   ```cmd
+   cd C:\server\oracle\WINDOWS.X64_193000_db_home\deinstall
+   ```
+3. Run the deinstall script:
+   ```cmd
+   deinstall.bat
+   ```
+4. Press **Enter** to accept default parameters when prompted by the script.
+5. The deinstall script will cleanly unregister Windows services, stop background processes, and unmount datafiles automatically!
+
+---
+
+### Step 3: Clean Up Environment Variables & Registry (Optional)
+
+1. Open **System Properties** (`sysdm.cpl`) → **Advanced** → **Environment Variables**:
+   * Delete any `ORACLE_HOME` or `ORACLE_SID` variables under System Variables.
+2. Open Registry Editor (`regedit`):
+   * Navigate to `HKEY_LOCAL_MACHINE\SOFTWARE\ORACLE` and delete the **ORACLE** folder if it remains.
+3. Delete data directory:
+   * Remove `C:\server\app\Administrator\oradata` and `C:\server\oracle\`.
 
 ---
 

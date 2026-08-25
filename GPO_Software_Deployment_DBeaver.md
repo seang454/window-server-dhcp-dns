@@ -150,6 +150,29 @@ Upon reboot, Windows executes the installer silently before login.
 
 ---
 
+## 🗑️ Part 3: Automated Silent Uninstall Guide via GPO
+
+If you ever need to remove DBeaver from domain client computers automatically from `pro-win-server`:
+
+### Method 1: GPO Startup Silent Uninstall Script
+1. Open **Group Policy Management** (`gpmc.msc`) on `pro-win-server`.
+2. Edit GPO **`Deploy_DBeaver_Software`** (or create **`Uninstall_DBeaver`**).
+3. Navigate to:  
+   **Computer Configuration → Policies → Windows Settings → Scripts (Startup) → Startup**
+4. Add Startup Script:
+   * **Script Name:** `"C:\Program Files\DBeaver\uninstall.exe"`
+   * **Script Parameters:** `/S`
+5. Save → run `gpupdate /force`.
+6. Upon next reboot of `pro-win-client`, Windows executes `uninstall.exe /S` and cleanly removes DBeaver.
+
+### Method 2: Manual Silent Uninstall Command (Immediate)
+On `pro-win-client`, open **Command Prompt (Admin)** and run:
+```cmd
+"C:\Program Files\DBeaver\uninstall.exe" /S
+```
+
+---
+
 ## 🛠️ Summary of Switches & Parameters
 
 | Parameter | Meaning & Function |
