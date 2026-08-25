@@ -173,6 +173,27 @@ On `pro-win-client`, open **Command Prompt (Admin)** and run:
 
 ---
 
+## 🧠 Deep-Dive: File Path Spaces & Script Execution Rationale
+
+Why do Installation and Uninstallation GPO script configurations look different?
+
+### 1. Installation Path (No Spaces)
+* **Path:** `\\WIN-J17IMHCEMA9\sotfware\dbeaver\dbeaver-ce-26.1.5-windows-x86_64.exe`
+* 🟢 **No Spaces in Path:** Because there are no spaces in the network path or file name, Windows GPO reads the `.exe` path directly in **Script Name** without needing wrappers or quotes.
+
+### 2. Uninstallation Path (Contains Spaces)
+* **Path:** `C:\Program Files\DBeaver\uninstall.exe`
+* ⚠️ **Contains Space in "Program Files":** Windows GPO parser can misinterpret `C:\Program` as the executable and fail silently if spaces are not handled properly.
+
+### 💡 Two Valid Ways to Handle Paths with Spaces in GPO:
+
+| Method | Script Name | Script Parameters | Explanation |
+|:---|:---|:---|:---|
+| **Direct Method with Quotes** | `"C:\Program Files\DBeaver\uninstall.exe"` | `/S` | Enclosing the path in double quotes `""` prevents GPO from splitting at the space. |
+| **`cmd.exe` Shell Wrapper** | `cmd.exe` | `/c "C:\Program Files\DBeaver\uninstall.exe" /S` | Passes the command to the Windows Command Processor shell (`cmd.exe /c`), which guarantees 100% execution safety. |
+
+---
+
 ## 🛠️ Summary of Switches & Parameters
 
 | Parameter | Meaning & Function |
