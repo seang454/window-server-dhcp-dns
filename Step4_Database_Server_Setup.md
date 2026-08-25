@@ -260,36 +260,76 @@ PowerShell returns `Ok.`.
 | **Step 16** | **Install Product** | Executed DBCA (0% to 100%) | Automatically compiled Oracle DLL binaries, registered Windows Services (`OracleServiceORCL` & `OracleOraDB19Home1TNSListener`), and built datafiles. |
 | **Step 17** | **Finish** | Click `Close` | Displays final confirmation and EM Express management URL (`https://WIN-J17IMHCEMA9.e6.local:5500/em`). |
 
----
-
-### Step 6: Configure Firewall Inbound Rule for Oracle Port 1521
+### Step 6: Configure Firewall Inbound Rule & Client LAN Access
 
 #### 🎯 Objective & Purpose
-To open inbound TCP Port 1521 in Windows Defender Firewall for local LAN connections.
+To open inbound TCP Port 1521 in Windows Defender Firewall and allow client computers (`192.168.1.100`) to connect over the LAN.
 
-#### ⚙️ Configuration Steps
+#### ⚙️ Server Configuration Step (`pro-win-server`)
 Open **PowerShell as Administrator** on `pro-win-server` and run:
 
 ```powershell
 netsh advfirewall firewall add rule name="Allow Oracle Database Port 1521" dir=in action=allow protocol=TCP localport=1521
 ```
 
-#### ✅ Expected Verification Result
-Opening Command Prompt and running `lsnrctl status` displays Listener running on Port `1521` with SID `orcl` and Service `orclpdb`.
+#### 💻 Client Connection Parameters (`pro-win-client`)
+Client software (SQL Developer, DBeaver, VS Code, Next.js) connects using these details:
+
+| Parameter | Connection Value |
+|:---|:---|
+| **Host / IP Address** | `192.168.1.10` *(or `pro-win-server.e6.local`)* |
+| **Port** | `1521` |
+| **Service Name** | `orclpdb.e6.local` *(Pluggable Database)* |
+| **SID** | `orcl` *(Container Database)* |
+| **Username** | `system` or `hr` or `portfolio_user` |
+| **Password** | `OraclePass123` |
+
+#### 🧪 Client Verification Test (from `pro-win-client`)
+Open **PowerShell** on `pro-win-client` (`192.168.1.100`) and run:
+```powershell
+Test-NetConnection -ComputerName 192.168.1.10 -Port 1521
+```
+* **Expected Result:** `TcpTestSucceeded : True` 🟢.
 
 ---
 
 ## 🛠️ Verification & Troubleshooting Commands
 
+### 🔴 Oracle 19c Verification Test Suite (3-Step Verification)
+
+#### Test 1: Verify Listener Status in Command Prompt
+```cmd
+lsnrctl status
+```
+* **Expected Result:** Listener status displays `PORT=1521`, `Status READY` for Service `orcl` and `orclpdb`.
+
+#### Test 2: Connect to SQL*Plus as `SYSDBA` & Check Open Mode
+```cmd
+sqlplus / as sysdba
+```
+Inside `SQL>` prompt:
+```sql
+SELECT name, open_mode FROM v$database;
+SHOW pdbs;
+```
+* **Expected Result:** `ORCL` open_mode is `READ WRITE`. `ORCLPDB` mode is `READ WRITE`.
+
+#### Test 3: Query Sample `HR` Employees Table in Pluggable Database (`orclpdb`)
+Inside `SQL>` prompt:
+```sql
+ALTER SESSION SET CONTAINER = orclpdb;
+SELECT employee_id, first_name, last_name, salary FROM hr.employees WHERE ROWNUM <= 5;
+```
+* **Expected Result:** Displays the first 5 employee rows (e.g. Steven King, Neena Kochhar) from the sample database.
+
+---
+
+### 🐘 PostgreSQL 18 Verification Commands
+
 ```powershell
 # Check PostgreSQL Service & Port
 Get-Service -Name postgresql*
 Test-NetConnection -ComputerName 192.168.1.10 -Port 5432
-
-# Check Oracle Listener & Services
-Get-Service -Name Oracle*
-lsnrctl status
-Test-NetConnection -ComputerName 192.168.1.10 -Port 1521
 ```
 
 ---
