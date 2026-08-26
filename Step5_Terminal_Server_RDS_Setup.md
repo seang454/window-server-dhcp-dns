@@ -348,11 +348,49 @@ Get-NetTCPConnection -LocalPort 3389 -State Listen
 
 ### Phase 4: Configure Group Policy for RDS Sessions (GPO)
 
-To prevent disconnected or idle sessions from wasting server RAM and CPU memory, configure Group Policy session timeout rules:
+To prevent disconnected or idle sessions from wasting server RAM and CPU memory, configure Group Policy session timeout rules.
+
+#### ❓ Deep-Dive Architecture Question: Where do we create and link this GPO, and WHY?
+
+👉 **Recommendation:** Link the GPO to the **`Domain Controllers` OU** (or to the Domain root **`e6.local`**).
+
+```
+                      ACTIVE DIRECTORY OBJECT HIERARCHY
+                      
+  e6.local (Domain Root)
+   ├── 📁 Domain Controllers (OU)  ──► 🖥️ WIN-J17IMHCEMA9 (pro-win-server / RDS Host) ◄── [LINK GPO HERE!]
+   └── 📁 Computers (CN Container) ──► 💻 CLIENT (pro-win-client / User Laptop)
+```
+
+##### 🔍 The 2 Critical Technical Reasons:
+
+1. 🖥️ **Reason 1: The Terminal Server is INSIDE `Domain Controllers`!**
+   * Ask: *Which machine is actually hosting the remote desktop sessions?* ──► **The Server (`WIN-J17IMHCEMA9`)!**
+   * The GPO settings we are configuring (*"Disconnect idle sessions after 30 minutes"*, *"Restrict users to 1 session"*) are **SERVER-SIDE rules** that control the server's CPU, RAM, and session tables.
+   * If you tried to apply this policy to the client machine (`Computers`), the client PC would ignore it because it does not run the Terminal Server engine. Meanwhile, the server (`WIN-J17IMHCEMA9`) would **never receive the policy** because it lives in the `Domain Controllers` OU!
+
+2. 🚫 **Reason 2: Active Directory CANNOT link GPOs to the default `Computers` folder!**
+   * In Active Directory architecture:
+     * **`Domain Controllers`** is an **OU** (`Organizational Unit`).
+     * **`Computers`** is a **Default System Container** (`CN=Computers`), **NOT an OU**!
+   * 🛡️ **Fundamental Active Directory Rule:** Group Policies can **ONLY** be linked to **Sites, Domains, and OUs**. Active Directory does not permit linking a GPO directly to default system containers like `CN=Computers` or `CN=Users` (in `gpmc.msc`, `Computers` doesn't even have a link option!).
+
+---
+
+#### 🛠️ Step-by-Step Configuration in `gpmc.msc`:
 
 1. Open **Group Policy Management (`gpmc.msc`)** on `pro-win-server`.
-2. Create or edit a GPO linked to `Domain` or `Computer OU` (e.g. `RDS_Session_Policy`).
-3. Navigate to:
+2. Expand:
+   ```text
+   Forest: e6.local
+   └── Domains
+       └── e6.local
+   ```
+3. Right-click **`Domain Controllers`** (or right-click **`e6.local`**).
+4. Select: **"Create a GPO in this domain, and Link it here..."**.
+5. Name the GPO: **`RDS_Session_Policy`** ──► click **OK**.
+6. Right-click **`RDS_Session_Policy`** ──► click **Edit**.
+7. Navigate to:
    ```text
    Computer Configuration
    └── Policies
@@ -366,7 +404,11 @@ To prevent disconnected or idle sessions from wasting server RAM and CPU memory,
                            ├── Set time limit for disconnected sessions ──► Enabled (e.g. 1 hour)
                            └── Set time limit for active but idle Remote Desktop Services sessions ──► Enabled (e.g. 30 minutes)
    ```
-4. Run `gpupdate /force` to apply immediately.
+8. Close the Group Policy Editor window.
+9. In PowerShell or Command Prompt, run:
+   ```cmd
+   gpupdate /force
+   ```
 
 ---
 
