@@ -387,7 +387,34 @@ INSERT INTO hr.company_projects VALUES (1, 'Enterprise_Oracle19c_Setup');
 COMMIT;
 
 GRANT SELECT ON hr.company_projects TO portfolio_user;
+
+-- 5. Switch Back to Root Container (CDB$ROOT)
+ALTER SESSION SET CONTAINER = CDB$ROOT;
+
+-- 6. Verify Return to Root Container
+SELECT SYS_CONTEXT('USERENV', 'SESSION_USER') AS current_user,
+       SYS_CONTEXT('USERENV', 'CON_NAME') AS current_container
+FROM dual;
+-- Returns: SYS | CDB$ROOT
 ```
+
+---
+
+#### 🧬 Deep-Dive: What is `PDB$SEED` & What Happens When You Run `ALTER SESSION SET CONTAINER = PDB$SEED;`?
+
+**`PDB$SEED`** is Oracle's built-in, system-supplied **Read-Only Master Template Database**.
+
+* 🍪 **Analogy:** Think of `PDB$SEED` as a **Factory Master Mold / Gold Disk Image**. When you run `CREATE PLUGGABLE DATABASE finance_pdb...`, Oracle copies `PDB$SEED` datafiles to create the new PDB instantly.
+* 🎯 **Why switch to `PDB$SEED`?:** DBAs switch to `PDB$SEED` (`ALTER SESSION SET CONTAINER = PDB$SEED;`) to inspect default template metadata or apply official Oracle CPU Security Patches.
+
+##### 📊 What You CAN vs. CANNOT Do Inside `PDB$SEED`:
+
+| Action / SQL Command | Allowed in `PDB$SEED`? | Explanation & Expected Result |
+|:---|:---:|:---|
+| `SELECT` System Views (`DBA_DATA_FILES`, `v$instance`) | ✅ **ALLOWED** | Inspect template datafiles, tablespaces, and character sets (`AL32UTF8`). |
+| Apply Oracle CPU System Security Patches | ✅ **ALLOWED** | Updates system package templates for future PDB clones. |
+| `CREATE TABLE` / `INSERT` / `UPDATE` / `DELETE` | ❌ **FORBIDDEN** | Blocked by **`ORA-16000: database open for read-only access`**. |
+| `CREATE USER` / Create Business Schemas | ❌ **FORBIDDEN** | Cannot create application users inside the read-only seed template. |
 
 ---
 
