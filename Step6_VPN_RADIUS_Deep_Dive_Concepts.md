@@ -593,3 +593,65 @@ If you try to test publicly from day 1 and the connection fails, you are blind t
    👉 **This PROVES 100% that RRAS, RADIUS, Active Directory, and IP address leasing work with zero doubts!**
 2. **Phase B (Public Deployment):** Once the server is certified working, you can safely expose it publicly using **Cloudflare Tunnel** or **Router Port Forwarding** without guessing where a bug might be!
 
+---
+
+### 🌐 How a User Remotes to VPN from the Public Internet (The Architecture & Requirements)
+
+```text
+  ☕ REMOTE EMPLOYEE (Coffee shop on Wi-Fi)
+  Opens Windows Built-in VPN Settings
+  Connects to: vpn.seang.shop (or your public IP)
+  User: E6\s.pengseang / Pass: abc@123
+        │
+        ▼  (Encrypted Tunnel over Port 443 / SSTP)
+  🌐 THE PUBLIC INTERNET
+        │
+        ▼
+  📦 YOUR OFFICE / HOME ROUTER (Huawei)
+        • Receives connection on Port 443
+        • Forwards packet to 192.168.1.10 (pro-win-server)
+        │
+        ▼
+  🖥️ WINDOWS SERVER 2022 (pro-win-server)
+        • RRAS receives the tunnel request
+        • NPS (RADIUS) verifies credentials against Active Directory
+        • Leases virtual IP: 192.168.1.221 🟢
+        │
+        ▼
+  🎉 THE USER IS NOW INSIDE YOUR INTERNAL NETWORK!
+  • Can open File Shares: \\192.168.1.10\finance
+  • Can open Remote Desktop: mstsc -> 192.168.1.10
+  • Can query Oracle/PostgreSQL databases!
+```
+
+#### 🛠️ The 3 Things Required for Public Access:
+To make your Windows Server VPN reachable from the public Internet, you need:
+
+| Requirement | How It Is Done |
+|:---|:---|
+| **1. A Public Address** | Either a **Public IP** from your ISP (e.g. `202.12.34.56`) OR a DNS name like **`vpn.seang.shop`** pointing to your router's public IP. |
+| **2. Router Port Forwarding** | On your Huawei router (`192.168.1.1`), open **Port 443** (SSTP VPN) and forward it to `192.168.1.10`. |
+| **3. Windows Firewall Rule** | Allow Port 443 (SSTP) or Port 1723 (PPTP) through Windows Defender Firewall on `pro-win-server`. |
+
+#### 💻 What the Remote User Does on Their Laptop (The 4 Steps):
+The remote user does **NOT need to install any third-party software**! Windows has a professional VPN client built-in:
+1. Click **Start** ──► **Settings** ──► **Network & Internet** ──► **VPN**.
+2. Click **Add a VPN connection**:
+   * **VPN provider:** `Windows (built-in)`
+   * **Connection name:** `Corporate_E6_VPN`
+   * **Server name or address:** `vpn.seang.shop` *(or your router's public IP)*
+   * **VPN type:** `Secure Socket Tunneling Protocol (SSTP)` *(or `Automatic`)*
+   * **Type of sign-in info:** `User name and password`
+   * **User name:** `E6\s.pengseang`
+   * **Password:** `abc@123`
+3. Click **Save**.
+4. Click on **`Corporate_E6_VPN`** ──► click **Connect**!
+
+#### 💡 Why SSTP (Port 443) is the Enterprise Gold Standard:
+Microsoft created **SSTP (Secure Socket Tunneling Protocol)** specifically for Windows Server:
+* **It uses TCP Port 443** — the exact same port as normal secure web browsing (`https://`).
+* **Why this is genius:** Coffee shops, hotels, schools, and airports frequently block traditional VPN ports (like PPTP port 1723 or IPsec port 500).  
+  👉 **Nobody EVER blocks Port 443!** If a network blocked port 443, Google, YouTube, and banking websites would stop working!  
+  So an SSTP VPN works **100% of the time, from anywhere in the world**!
+
+
