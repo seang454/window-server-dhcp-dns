@@ -53,33 +53,55 @@ Where does each user account live inside Oracle Database 19c?
 ```
                       ORACLE 19c USER LOCATION HIERARCHY
                       
-  ========================================================================================
-  │ 🏢 CONTAINER DATABASE (CDB$ROOT - SID: orcl)                                         │
-  │                                                                                      │
-  │  👑 Global System Accounts & Common Users (Exist Server-Wide):                       │
-  │     ├── SYS                  <── (Root Superuser / SYSDBA)                           │
-  │     ├── SYSTEM               <── (Global DBA Admin)                                  │
-  │     └── c##global_admin      <── (Custom Common User / Container = ALL)              │
-  ================================───────┬────────────────────────────────────────────────
+  ================================================================================================
+  │ 🏢 CONTAINER DATABASE (CDB$ROOT - SID: orcl)  ──► [ CONTAINER = ALL ]                        │
+  │                                                                                              │
+  │  👑 Global System Accounts & Common Users (Exist Server-Wide across ALL Containers):         │
+  │     ├── SYS                  <── (Root Superuser / SYSDBA)                                   │
+  │     ├── SYSTEM               <── (Global DBA Admin)                                          │
+  │     └── c##global_admin      <── (Custom Common User / CONTAINER = ALL)                      │
+  ================================───────┬────────────────────────────────────────────────────────
                                          │
                  ┌───────────────────────┴───────────────────────┐
                  │                                               │
-  ===============▼================               ================▼========================
-  │ 🧬 PDB$SEED (Template PDB)   │               │ 📁 ORCLPDB (Service: orclpdb)         │
-  │                              │               │                                       │
-  │  (System Read-Only Template  │               │  🏢 Visible Accounts & Schemas:       │
-  │   used to clone new PDBs)    │               │     ├── SYSTEM    <── (Via Inheritance)│
-  │                              │               │     ├── PDBADMIN  <── (100% Local)     │
-  │                              │               │     ├── HR        <── (100% Local)     │
-  │                              │               │     └── portfolio_user (100% Local)   │
-  ================================               =========================================
+  ===============▼===============================               ================▼================================
+  │ 🧬 PDB$SEED ──► [CONTAINER = CURRENT]        │               │ 📁 ORCLPDB (Service: orclpdb) ──► [CONTAINER = CURRENT]
+  │                 [READ ONLY TEMPLATE]         │               │                                               │
+  │                                              │               │  🏢 Visible Accounts & Local Schemas:         │
+  │  (System Read-Only Template used to clone    │               │     ├── SYSTEM    <── (Inherited from CDB$ROOT)  │
+  │   new PDBs. No local users can be created!)  │               │     ├── PDBADMIN  <── (Local / CONTAINER=CURRENT)│
+  │                                              │               │     ├── HR        <── (Local / CONTAINER=CURRENT)│
+  │                                              │               │     └── portfolio_user (Local/CONTAINER=CURRENT)
+  ================================================               =================================================
 ```
 
-### 📊 Summary of User Locations & Inheritance:
-1. **`CDB$ROOT` (Container Level):** Stores **`SYS`**, **`SYSTEM`**, and **`c##...`** common users. They have global visibility across the entire server.
-2. **`ORCLPDB` (Pluggable Database Level):**
-   * **`SYSTEM`:** Visible inside `ORCLPDB` via **inheritance** from the Root Container (`CDB$ROOT`).
-   * **`PDBADMIN`**, **`HR`**, **`portfolio_user`:** Live **100% locally** inside `ORCLPDB` data dictionary space.
+### 📊 Summary of Container Level Clauses:
+1. **`CDB$ROOT` Level (`CONTAINER = ALL`):**  
+   Common user accounts created here (`c##global_admin`) exist across all containers server-wide.
+2. **`ORCLPDB` Level (`CONTAINER = CURRENT`):**  
+   Local user accounts created here (`PDBADMIN`, `HR`, `portfolio_user`) live strictly inside the current PDB only (`CONTAINER = CURRENT`).
+3. **`PDB$SEED` Level (`CONTAINER = CURRENT` - Read-Only):**  
+   `PDB$SEED` is a PDB container (`CONTAINER = CURRENT`), but because it is locked in **`READ ONLY`** mode, creating local users inside `PDB$SEED` is forbidden!
+
+#### 🔑 Deep-Dive: What does `CONTAINER = CURRENT` mean?
+
+In Oracle Multitenant Architecture, **`CONTAINER = CURRENT`** is an SQL clause that tells Oracle:
+
+> 🛡️ *"Apply this user, role, or tablespace **STRICTLY inside the current database session only** (e.g. `ORCLPDB`), and do NOT affect any other database on the server!"*
+
+##### 📊 `CONTAINER = CURRENT` vs. `CONTAINER = ALL`
+
+| SQL Clause | Scope & Boundary | User Account Type | Real-World Example |
+|:---|:---|:---|:---|
+| 🏠 **`CONTAINER = CURRENT`** | **Local to 1 PDB ONLY** | **Local User** | `CREATE USER portfolio_user IDENTIFIED BY Pass123 CONTAINER = CURRENT;`<br>*(Creates user ONLY inside `ORCLPDB`)*. |
+| 🌐 **`CONTAINER = ALL`** | **Server-Wide across ALL PDBs** | **Common User** | `CREATE USER c##global_admin IDENTIFIED BY Pass123 CONTAINER = ALL;`<br>*(Creates user across `CDB$ROOT` + `ORCLPDB` + `FINANCE_PDB`)*. |
+
+##### 🔒 3 Reasons Why `CONTAINER = CURRENT` is Critical for Security:
+1. **Tenant Security Isolation (Multi-Tenancy 🏢):** User created with `CONTAINER = CURRENT` inside `ORCLPDB` has ZERO existence or login ability inside `FINANCE_PDB` or `CDB$ROOT`.
+2. **Prevents Accidental Server-Wide Changes ⚡:** Developers in `ORCLPDB` cannot alter global server settings.
+3. **Automatic Default inside PDBs 🤖:** When connected to `ORCLPDB`, any `CREATE USER` or `CREATE TABLE` command automatically defaults to `CONTAINER = CURRENT`.
+
+---
 
 #### 💡 Deep-Dive: What happens when you create a 2nd Pluggable Database (e.g. `FINANCE_PDB`)?
 
