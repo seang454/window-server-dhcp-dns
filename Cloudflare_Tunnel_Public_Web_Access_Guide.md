@@ -392,6 +392,24 @@ TaskPath       TaskName              State
 
 ---
 
+### 💡 Detailed Breakdown of the 6 Scheduled Task Commands:
+
+In Windows systems engineering, every scheduled task consists of **3 Core Building Blocks**:
+* 🎯 **Action:** WHAT to execute (the executable binary and its arguments)
+* ⏰ **Trigger:** WHEN to execute (boot, schedule, or event)
+* 👤 **Principal:** WHO executes it (user identity and security privilege)
+
+| Line # | Command & Parameter | Deep-Dive Technical Explanation |
+|:---:|:---|:---|
+| **1** | `New-ScheduledTaskAction`<br>`-Execute "C:\cloudflared\cloudflared.exe"`<br>`-Argument '--config "C:\cloudflared\config.yml" tunnel run'` | **The Action (WHAT to run):**<br>• `-Execute`: Defines the exact binary file path to launch.<br>• `-Argument`: Passes the command-line parameters that instruct `cloudflared` to load `C:\cloudflared\config.yml` and execute the `tunnel run` subcommand. |
+| **2** | `New-ScheduledTaskTrigger`<br>`-AtStartup` | **The Trigger (WHEN to run):**<br>• `-AtStartup`: Instructs the Windows kernel to launch this task immediately when the server boots up, **BEFORE any user logs in or types a password**! This guarantees 24/7 uptime during unattended server reboots. |
+| **3** | `New-ScheduledTaskPrincipal`<br>`-UserId "SYSTEM"`<br>`-LogonType ServiceAccount`<br>`-RunLevel Highest` | **The Principal (WHO runs it):**<br>• `-UserId "SYSTEM"`: Runs under the `NT AUTHORITY\SYSTEM` OS kernel account (unrestricted local access, no password, never expires).<br>• `-LogonType ServiceAccount`: Declares it as a background service daemon (no interactive desktop UI).<br>• `-RunLevel Highest`: Bypasses UAC elevation limits and runs with full administrative kernel rights. |
+| **4** | `Register-ScheduledTask`<br>`-TaskName "CloudflareTunnel247"`<br>`-Action $action`<br>`-Trigger $trigger`<br>`-Principal $principal`<br>`-Force` | **The Registration (SAVE into Windows):**<br>• Combines the Action + Trigger + Principal and permanently writes the task into the Windows Task Scheduler database (`C:\Windows\System32\Tasks\CloudflareTunnel247`).<br>• `-Force`: Overwrites any previous configuration cleanly without errors. |
+| **5** | `Start-ScheduledTask`<br>`-TaskName "CloudflareTunnel247"` | **Immediate Execution:**<br>• Instead of waiting for the next server reboot, this kicks off the task immediately in the background. |
+| **6** | `Get-ScheduledTask`<br>`-TaskName "CloudflareTunnel247"` | **Status Verification:**<br>• Queries the Windows Task Scheduler engine and returns `State: Running`, confirming the daemon is actively bridging public traffic! |
+
+---
+
 ### 6.3 How to Manually Edit, Validate, and Update `config.yml` Anytime
 
 When you want to edit your website routing, add new subdomains (e.g. `api.seang.shop`), or change ports, follow this 3-step workflow:
