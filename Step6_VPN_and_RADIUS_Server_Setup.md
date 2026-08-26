@@ -1,0 +1,281 @@
+# Step 6: VPN Server (RRAS) & RADIUS Server (NPS) Setup & Deployment Guide
+
+**Windows Server 2022 on VMware Workstation**  
+**Domain:** `e6.local`  
+**Server Hostname:** `WIN-J17IMHCEMA9` (`server1.e6.local`)  
+**Server IP:** `192.168.1.10`  
+**Client VM:** `CLIENT` (`pro-win-client` at `192.168.1.100`)  
+**Services:** Routing and Remote Access (RRAS) + Network Policy Server (NPS)  
+**Protocols & Ports:**  
+* **RADIUS Authentication:** UDP `1812` (Auth), UDP `1813` (Accounting)  
+* **VPN SSTP:** TCP `443` (HTTPS SSL/TLS Tunnel)  
+* **VPN PPTP:** TCP `1723` + GRE Protocol 47  
+* **VPN L2TP/IPsec:** UDP `500`, UDP `4500`, UDP `1701`  
+
+---
+
+## 📖 Deep-Dive Concepts & Architecture
+
+### 🛡️ 1. What is a VPN Server (RRAS)?
+
+A **Virtual Private Network (VPN)** server enables remote workers outside the office (at home, in coffee shops, or traveling) to establish a **secure, encrypted network tunnel** over the public Internet into the company's internal private local area network (`192.168.1.0/24`).
+
+* **Windows Component:** **Routing and Remote Access Service (RRAS)**.
+* **How it Works:** When a client connects via VPN, the VPN server assigns the client an internal corporate IP address (e.g. `192.168.1.221`). To the client, it behaves as though their laptop is physically plugged into the office network switch with an Ethernet cable!
+
+---
+
+### 🔐 2. What is a RADIUS Server (NPS)?
+
+**RADIUS** stands for **Remote Authentication Dial-In User Service**. It is the global networking standard (RFC 2865 / 2866) for centralized **AAA** security:
+
+1. **Authentication:** *"Who are you? Are your domain username and password valid?"*
+2. **Authorization:** *"What are you allowed to do? Are you permitted to connect to the VPN right now?"*
+3. **Accounting:** *"When did you connect, how many bytes did you transfer, and when did you disconnect?"*
+
+* **Windows Component:** **Network Policy Server (NPS)**.
+* **Role in Enterprise:** Instead of configuring user permissions inside every single Wi-Fi router, VPN server, and firewall independently, all network equipment points to the **central RADIUS Server (NPS)**. NPS checks Active Directory and grants or denies access centrally!
+
+---
+
+### 🗺️ Master Architecture: How RRAS & RADIUS Work Together
+
+```
+                  ENTERPRISE VPN + RADIUS ARCHITECTURE
+                  
+   [ Remote Client ] (pro-win-client)
+   IP: 192.168.1.100
+         │
+         │ 1. Client initiates VPN Connection (Sends Domain Credentials: s.pengseang)
+         ▼
+   ===============================================================
+   │ 🛡️ VPN SERVER (RRAS - Routing & Remote Access)              │
+   │    IP: 192.168.1.10                                         │
+   ===============================================================
+         │
+         │ 2. RADIUS Access-Request (UDP Port 1812)
+         │    "Is user s.pengseang authorized to connect?"
+         ▼
+   ===============================================================
+   │ 🔐 RADIUS SERVER (NPS - Network Policy Server)               │
+   │    IP: 192.168.1.10 (Local or Central Server)               │
+   │                                                             │
+   │  ┌────────────────────────────────────────────────────────┐ │
+   │  │ Checks Active Directory Domain (e6.local):             │ │
+   │  │ 1. Password Verification (Kerberos / MS-CHAPv2)        │ │
+   │  │ 2. Network Policy (Day/Time restrictions, Group rules)  │ │
+   │  │ 3. Dial-in Permission (Allow Access vs NPS Policy)     │ │
+   │  └────────────────────────────────────────────────────────┘ │
+   ===============================================================
+         │
+         │ 3. RADIUS Access-Accept (UDP Port 1812)
+         │    "Credentials verified! User is allowed."
+         ▼
+   ===============================================================
+   │ 🛡️ VPN SERVER (RRAS)                                        │
+   │    • Establishes Encrypted Tunnel                           │
+   │    • Assigns Virtual Private IP: 192.168.1.221              │
+   ===============================================================
+         │
+         │ 4. Encrypted Tunnel Established 🟢
+         ▼
+   [ Remote Client accesses Internal Shares, Databases & Web Servers! ]
+```
+
+---
+
+### 🏬 Real-World Analogy: The Secure Corporate Building
+
+Think of a **High-Security Corporate Headquarters**:
+
+* **The Remote Worker:** An employee standing outside the building gate.
+* **The VPN Server (RRAS):** The **Heavy Secure Front Door** and private tunnel into the building.
+* **The RADIUS Server (NPS):** The **Chief Security Officer with the master badge database**.  
+  When the employee knocks on the front door (VPN), the door guard doesn't make the decision. The door guard calls the Chief Security Officer (RADIUS / NPS): *"Employee `s.pengseang` wants to enter. Is their badge valid?"*  
+  The Chief Security Officer checks the corporate directory (Active Directory), confirms their clearance, and tells the guard: *"Access Granted! Let them in."*
+
+---
+
+## 🧱 Core VPN Protocols Supported in Windows Server
+
+| VPN Protocol | Port & Transport | Security Level | Enterprise Usage |
+|:---|:---:|:---:|:---|
+| **SSTP** (Secure Socket Tunneling Protocol) | TCP `443` (SSL/TLS) | 🔒 **Ultra High** | **#1 Choice for Windows.** Traverses firewalls seamlessly because it uses standard HTTPS Port 443! |
+| **IKEv2** (Internet Key Exchange v2) | UDP `500`, `4500` | 🔒 **Ultra High** | Modern mobile VPN protocol; supports automatic reconnection when switching networks. |
+| **L2TP / IPsec** | UDP `500`, `4500`, `1701` | 🔒 **High** | Cross-platform standard (iOS, Android, Mac, Windows); requires a pre-shared key (PSK). |
+| **PPTP** (Point-to-Point Tunneling Protocol) | TCP `1723` + GRE | ⚠️ **Basic / Legacy** | Easiest to configure for offline labs and testing; fast setup without certificate requirements. |
+
+---
+
+## ⚙️ Step-by-Step Implementation Guide
+
+### Phase 1: Install Remote Access (RRAS) & Network Policy Server (NPS) Roles
+
+On **`pro-win-server` (`192.168.1.10`)**:
+
+1. Open **Server Manager** ──► click **Manage** ──► select **Add Roles and Features**.
+2. On **Installation Type**: Choose **Role-based or feature-based installation** ──► click **Next**.
+3. On **Server Selection**: Select `WIN-J17IMHCEMA9.e6.local` (`192.168.1.10`) ──► click **Next**.
+4. On **Server Roles**, select:
+   * ✅ **Network Policy and Access Services** *(This is the RADIUS Server!)*
+   * ✅ **Remote Access** *(This is the VPN Server!)*
+5. Click **Next** through Features.
+6. On **Remote Access Role Services**, check:
+   * ✅ **DirectAccess and VPN (RAS)** *(When prompted, click **Add Features**)*
+   * ✅ **Routing** *(Optional, enables LAN packet routing)*
+7. Click **Next** ──► click **Install**!
+8. When installation finishes, click **Close**.
+
+---
+
+### Phase 2: Configure Routing and Remote Access (RRAS) as a VPN Server
+
+1. In **Server Manager**, click **Tools** (top right) ──► select **Routing and Remote Access**.
+2. In the console tree, right-click your server name **`WIN-J17IMHCEMA9 (local)`** ──► select:  
+   👉 **"Configure and Enable Routing and Remote Access"**.
+3. The Setup Wizard opens ──► click **Next**.
+4. On **Configuration**, select:  
+   👉 **"Custom configuration"** ──► click **Next**.
+5. Check:  
+   ✅ **"VPN access"**  
+   ✅ **"LAN routing"**  
+   Click **Next** ──► click **Finish**!
+6. When prompted: *"The Routing and Remote Access service is ready to use. Do you want to start the service?"* ──► click **Start service**!
+7. The service will initialize and show a green up-arrow 🟢 next to your server name.
+
+---
+
+### Phase 3: Configure the VPN Client IP Address Pool
+
+The VPN server needs a dedicated pool of IP addresses to assign to incoming remote clients:
+
+1. In **Routing and Remote Access**, right-click **`WIN-J17IMHCEMA9 (local)`** ──► select **Properties**.
+2. Click the **IPv4** tab.
+3. Under **IPv4 address assignment**, select:  
+   👉 **"Static address pool"**.
+4. Click **Add...** and enter an IP range in your subnet that does not conflict with DHCP:
+   * **Start IP address:** `192.168.1.220`
+   * **End IP address:** `192.168.1.240`
+   * *(Number of addresses will automatically calculate: 21)*
+5. Click **OK** ──► Click **Apply** ──► Click **OK**!
+
+---
+
+### Phase 4: Configure Network Policy Server (NPS - RADIUS)
+
+Now we configure the RADIUS Server to authenticate VPN users:
+
+#### Step 4A: Register NPS in Active Directory
+1. In **Server Manager**, click **Tools** ──► select **Network Policy Server**.
+2. In the console tree, right-click **`NPS (Local)`** (at the very top) ──► select:  
+   👉 **"Register server in Active Directory"**.
+3. Click **OK** on the confirmation dialog. *(This authorizes NPS to read domain user passwords from Active Directory).*
+
+#### Step 4B: Configure the Network Access Policy for VPN Users
+1. In **Network Policy Server**, expand **Policies** ──► click **Network Policies**.
+2. By default, there are two disabled policies: *"Connections to other access servers"* and *"Connections to Microsoft Routing and Remote Access server"*.
+3. Right-click **Network Policies** ──► select **New**.
+4. Name the policy: **`Allow_VPN_Access`** ──► **Type of network access server:** select **Remote Access Server (VPN-Dial up)** ──► click **Next**.
+5. On **Specify Conditions**: Click **Add...** ──► select **User Groups** ──► click **Add Groups...** ──► type: **`Domain Users`** ──► click **OK** ──► click **Next**.
+6. On **Specify Access Permission**: Select **Access granted** ──► click **Next**.
+7. On **Configure Authentication Methods**:
+   * Check ✅ **Microsoft Encrypted Authentication version 2 (MS-CHAP-v2)**
+   * Check ✅ **Microsoft Encrypted Authentication (MS-CHAP)**
+   * Click **Next**.
+8. Click **Next** through Constraints and Settings ──► click **Finish**!
+
+---
+
+### Phase 5: Configure User Dial-in Permission in Active Directory
+
+To ensure Active Directory lets NPS make the access decision:
+
+1. Open **Active Directory Users and Computers (`dsa.msc`)**.
+2. Double-click user **`s.pengseang`**.
+3. Click the **Dial-in** tab.
+4. Under **Network Access Permission**, select:  
+   👉 **"Control access through NPS Network Policy"** *(or "Allow access")*.
+5. Click **Apply** ──► click **OK**!
+
+---
+
+## 🧪 Comprehensive Client Testing Suite (from `pro-win-client`)
+
+Execute these verification tests from **`pro-win-client` (`192.168.1.100`)**:
+
+### 🧪 Test 1: Create the VPN Connection on Client
+
+1. On `pro-win-client`, click **Start** ──► click **Settings** (Gear icon) ──► select **Network & Internet**.
+2. In the left menu, select **VPN** ──► click **Add a VPN connection**.
+3. Configure the fields:
+   * **VPN provider:** `Windows (built-in)`
+   * **Connection name:** `Corporate_E6_VPN`
+   * **Server name or address:** `192.168.1.10` *(or `server1.e6.local`)*
+   * **VPN type:** `Automatic` *(or `Point to Point Tunneling Protocol (PPTP)` / `SSTP`)*
+   * **Type of sign-in info:** `User name and password`
+   * **User name:** `E6\s.pengseang`
+   * **Password:** `abc@123`
+4. Click **Save**!
+
+---
+
+### 🧪 Test 2: Connect to the VPN & Verify Tunnel
+
+1. Click on your new **`Corporate_E6_VPN`** ──► click **Connect**!
+2. Status will change from *Connecting* ──► to 🟢 **Connected**!
+
+---
+
+### 🧪 Test 3: Verify Virtual IP Assignment & Tunnel Statistics
+
+Open **Command Prompt** on `pro-win-client` and run:
+
+```cmd
+ipconfig
+```
+
+Expected Output:
+```text
+PPP adapter Corporate_E6_VPN:
+   Connection-specific DNS Suffix  . : e6.local
+   IPv4 Address. . . . . . . . . . . : 192.168.1.221
+   Subnet Mask . . . . . . . . . . . : 255.255.255.255
+   Default Gateway . . . . . . . . . : 0.0.0.0
+```
+
+* 🟢 **Status:** The client has been securely leased virtual IP **`192.168.1.221`** directly from your VPN static pool!
+
+---
+
+### 🧪 Test 4: Verify Active Remote Connections on Server
+
+On **`pro-win-server`**, in the **Routing and Remote Access** console:
+* Click on **`Remote Access Clients`**.
+* You will see:
+  * **User:** `E6\s.pengseang`
+  * **Duration:** Active
+  * **Assigned IP:** `192.168.1.221`
+  * **Bytes In / Out:** Live encrypted traffic counters!
+
+---
+
+## 🔧 Troubleshooting & Known Issues
+
+| Symptom / Error | Root Cause | Exact Resolution |
+|:---|:---|:---|
+| **"Error 800: Unable to establish the VPN connection"** | Server RRAS service is not started, or firewall blocks VPN ports. | In RRAS console, right-click server ──► All Tasks ──► Start. Ensure firewall allows TCP 1723 / TCP 443. |
+| **"Error 691: The remote connection was denied because the user name and password combination"** | NPS policy did not match or User Dial-in permission is set to "Deny access". | In `dsa.msc`, check User Properties ──► Dial-in tab ──► set to "Control access through NPS Policy". Verify MS-CHAP-v2 is enabled in NPS. |
+| **"Error 812: The connection was prevented because of a policy configured on your RAS/VPN server"** | No matching Network Policy in NPS. | In NPS ──► Network Policies ──► Ensure `Allow_VPN_Access` is at the top of the list and has status "Grant Access". |
+
+---
+
+## 📊 Summary of Master Server Roles Completed
+
+| # | Server Role | Status | Documentation File |
+|:---:|:---|:---:|:---|
+| 1 | **DHCP & DNS Core Network** | ✅ Complete | [`Step1_DHCP_DNS_Setup.md`](Step1_DHCP_DNS_Setup.md) |
+| 2 | **File Server & FTP Storage** | ✅ Complete | [`Step2_File_FTP_Server_Setup.md`](Step2_File_FTP_Server_Setup.md) |
+| 3 | **Web Server (IIS + Next.js + PM2)** | ✅ Complete | [`Step3_IIS_Web_Server_Setup.md`](Step3_IIS_Web_Server_Setup.md) |
+| 4 | **Database Server (Oracle 19c & PostgreSQL)** | ✅ Complete | [`Step4_Database_Server_Setup.md`](Step4_Database_Server_Setup.md) |
+| 5 | **Terminal Server (Remote Desktop Services - RDS)** | ✅ Complete | [`Step5_Terminal_Server_RDS_Setup.md`](Step5_Terminal_Server_RDS_Setup.md) |
+| 6 | **VPN Server (RRAS) & RADIUS Server (NPS)** | 🚀 Ready to Execute | [`Step6_VPN_and_RADIUS_Server_Setup.md`](Step6_VPN_and_RADIUS_Server_Setup.md) |
