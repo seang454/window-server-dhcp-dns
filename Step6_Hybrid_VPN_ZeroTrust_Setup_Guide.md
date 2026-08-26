@@ -135,6 +135,24 @@ Click **Next** ──► click **Next** past Features.
    * ✅ **DirectAccess and VPN (RAS)**  
      *(A popup will appear: click **Add Features**)*
    * ✅ **Routing** *(Enables LAN routing and packet forwarding)*
+   * ❌ **Web Application Proxy** *(Leave UNCHECKED)*
+
+---
+
+#### 🔍 Deep-Dive: What is the Difference Between These 3 Role Services?
+
+| Role Service | Layer | What It Actually Does | Do We Need It for VPN? |
+|:---|:---:|:---|:---:|
+| **1. DirectAccess and VPN (RAS)** | Layer 3 (Network) | **The VPN Engine:** Encrypts and tunnels remote traffic into the internal network. Supports user-dialed VPN (SSTP, PPTP, L2TP, IKEv2) and seamless, always-on corporate DirectAccess. | ✅ **YES! MANDATORY!** *(Without this, there is no VPN!)* |
+| **2. Routing** | Layer 3 (Network) | **The Software Router:** Enables IP packet forwarding between the VPN virtual adapter and your LAN. Supports static routes, RIP, NAT, and site-to-site branch office routing. | ✅ **YES! RECOMMENDED!** *(Allows VPN clients to talk to other servers on the LAN).* |
+| **3. Web Application Proxy (WAP)** | Layer 7 (Application) | **Reverse Proxy for AD FS:** Sits in DMZ to pre-authenticate external HTTP users against Active Directory Federation Services (AD FS) before accessing internal web apps (SharePoint, Exchange). | ❌ **NO! DO NOT CHECK!** *(Requires AD FS; we already use IIS ARR / Cloudflare).* |
+
+##### 🏢 Real-World Analogy:
+* 🛡️ **DirectAccess & VPN (RAS) = The Armored Tunnel:** The secret, encrypted underground tunnel that lets an employee drive their car from home directly into the company parking lot.
+* 🚦 **Routing = The Traffic Cop:** Once the employee is in the parking lot, the traffic cop directs their car to the right building (DNS, File Server, Oracle Database).
+* 🚪 **Web Application Proxy = The Front Door Bouncer:** A bouncer standing at the public entrance checking badges for visitors accessing web portals (Exchange Outlook Web App, SharePoint).
+
+---
 
 ### 1.4 Install:
 1. Click **Next** ──► review the confirmation screen.
