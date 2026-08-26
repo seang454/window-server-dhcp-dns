@@ -181,6 +181,32 @@ On **`pro-win-server` (`192.168.1.10`)**:
 
 ---
 
+#### 🔍 Deep-Dive: Understanding the Wizard Options in Detail
+
+##### 1️⃣ Screen 1: Why Choose "Custom Configuration" Over the Other 4 Options?
+
+| Option | What It Does | Why Admins Avoid It / Why Custom is Better |
+|:---|:---|:---|
+| **Remote access (dial-up or VPN)** | Wizard-guided setup for VPN | ⚠️ **Requires 2 Physical Network Cards!** If your server only has 1 NIC, the wizard throws an error: *"Less than two network interfaces detected"*. |
+| **Network address translation (NAT)** | Turns the server into an internet router | Replaces your home router. Not needed because your Huawei router already handles NAT. |
+| **VPN access and NAT** | Combines VPN with NAT internet sharing | Clashes with existing DHCP/NAT setups on single-NIC server environments. |
+| **Secure connection between two private networks** | Site-to-Site VPN | Connects two corporate branch offices together permanently (e.g. Phnom Penh office to Siem Reap office). |
+| **Custom configuration** ⭐ | **Manual, granular feature selection** | 🏆 **The Enterprise Standard!** Works flawlessly with 1 network card, bypasses wizard assumptions, and gives you 100% control! |
+
+---
+
+##### 2️⃣ Screen 2: The 5 Custom Configuration Checkboxes Explained
+
+| Checkbox | What It Does | Do We Check It? |
+|:---|:---|:---:|
+| **✅ VPN access** | Activates the core VPN server engine. Opens the tunnel listeners (SSTP, PPTP, L2TP) and manages virtual IP allocations. | **YES! MANDATORY!** *(Without this, it is not a VPN server).* |
+| **❌ Dial-up access** | Enables legacy 1990s telephone line modems (POTS 56k dial-in). | **NO!** *(Obsolete hardware).* |
+| **❌ Demand-dial connections** | Automatically dials a VPN connection to another branch office only when data needs to cross. | **NO!** *(Only used for Site-to-Site branch office routing).* |
+| **❌ NAT** | Enables Windows software NAT translation. | **NO!** *(Your router and Cloudflare already do NAT).* |
+| **✅ LAN routing** | Enables kernel IPv4 packet forwarding between the VPN virtual adapter (`192.168.1.221`) and your LAN (`192.168.1.10`) so VPN users can reach file shares, databases, and DNS. | **YES! RECOMMENDED!** *(Enables internal communication).* |
+
+---
+
 ### Phase 3: Configure the VPN Client IP Address Pool
 
 The VPN server needs a dedicated pool of IP addresses to assign to incoming remote clients:
