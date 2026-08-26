@@ -375,6 +375,27 @@ In RADIUS security, **Constraints** represent the **Limits and Operating Boundar
 ---
 
 8. **Configure Settings:** Click **Next** (keep defaults).
+
+---
+
+#### 🔍 Deep-Dive: What are "Settings" in Network Policy Server (NPS)?
+
+When NPS grants access (`RADIUS Access-Accept`), it attaches specific attributes and instructions directing the VPN server on how to establish and secure the client's connection.
+
+| Setting Area | Sub-Category | Purpose & Enterprise Usage | Default Configuration |
+|:---|:---|:---|:---:|
+| **RADIUS Attributes** | **Standard** | RFC 2865 standard attributes. Automatically includes: <br>• `Framed-Protocol = PPP` (encapsulates data inside a PPP tunnel). <br>• `Service-Type = Framed` (delivers full Layer 3 IP network routing). | Pre-configured ✅ |
+| **RADIUS Attributes** | **Vendor Specific (VSA)** | Hardware-specific vendor attributes (e.g. Cisco-AVPair, MikroTik bandwidth rate-limiting `10M/10M`). | Unconfigured (Optional) |
+| **Routing & Remote Access** | **Multilink & BAP** | Bandwidth Allocation Protocol — dynamically aggregates multiple dial-in lines or modems into a single high-bandwidth trunk. | Unconfigured |
+| **Routing & Remote Access** | **IP Filters** | Inbound/Outbound packet firewall filters applied directly to the user session (e.g. restrict user to Web port 80/443 only). | Unconfigured |
+| **Routing & Remote Access** | **Encryption** | Enforces encryption level (Basic, Strong 128-bit, Strongest 256-bit AES / 3DES). | Strong/Strongest Allowed ✅ |
+| **Routing & Remote Access** | **IP Settings** | Determines whether the VPN server allocates IP from the static pool or if the client may request a static IP. | Server Assigns (Pool) ✅ |
+
+> 💡 **Why Keep Defaults?**  
+> The default attributes (`Framed-Protocol = PPP`, `Service-Type = Framed`) and default encryption provide the standard, high-security enterprise baseline for Windows RRAS without requiring manual adjustments.
+
+---
+
 9. Click **Finish**!
 
 ### 4.3 Set Policy Processing Order
