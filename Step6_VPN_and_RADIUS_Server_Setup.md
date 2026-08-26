@@ -282,6 +282,12 @@ Now we configure the RADIUS Server to authenticate VPN users:
    👉 **"Register server in Active Directory"**.
 3. Click **OK** on the confirmation dialog. *(This authorizes NPS to read domain user passwords from Active Directory).*
 
+> [!NOTE]
+> 💡 **Why is "Register server in Active Directory" Greyed Out / Disabled?**  
+> If the option is disabled or greyed out, **this is normal, expected, and good news!**  
+> Because your server `WIN-J17IMHCEMA9` is an **Active Directory Domain Controller**, Windows automatically adds the server computer account into the **`RAS and IAS Servers`** security group during role installation.  
+> Windows disables this option to prevent accidental double-registration. It means the server is **already 100% registered and authorized** to read domain user dial-in permissions from Active Directory! You can safely proceed directly to Step 4B!
+
 #### Step 4B: Configure the Network Access Policy for VPN Users
 1. In **Network Policy Server**, expand **Policies** ──► click **Network Policies**.
 2. By default, there are two disabled policies: *"Connections to other access servers"* and *"Connections to Microsoft Routing and Remote Access server"*.

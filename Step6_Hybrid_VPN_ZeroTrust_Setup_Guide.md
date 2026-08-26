@@ -305,6 +305,14 @@ Network Policy Server (NPS) acts as the centralized **AAA (Authentication, Autho
 3. Right-click on **`NPS (Local)`** at the top of the left tree ──► select **Register server in Active Directory**.
 4. Click **OK** on the authorization prompt ──► click **OK** on the confirmation.
 
+> [!NOTE]
+> 💡 **Why is "Register server in Active Directory" Greyed Out / Disabled?**  
+> If the option is disabled or greyed out, **this is normal, expected, and good news!**  
+> Because your server `WIN-J17IMHCEMA9` is an **Active Directory Domain Controller**, Windows automatically adds the server computer account into the **`RAS and IAS Servers`** security group during role installation.  
+> Windows disables this option to prevent accidental double-registration. It means the server is **already 100% registered and authorized** to read domain user dial-in permissions from Active Directory! You can safely proceed directly to Step 4.2!
+
+---
+
 ### 4.2 Create the VPN Authorization Policy
 1. In `nps.msc`, expand **Policies** in the left menu ──► click **Network Policies**.
 2. In the right pane, **right-click** in blank space ──► select **New**.
