@@ -14,14 +14,15 @@
 1. [Architecture & The Hybrid Request Flow](#1-architecture--the-hybrid-request-flow)
 2. [Why We Need Both: Underlay vs. Overlay](#2-why-we-need-both-underlay-vs-overlay)
 3. [Lab Context & Credentials](#3-lab-context--credentials)
-4. [Phase 1: Configure Windows Server VPN (RRAS) on Server](#phase-1-configure-windows-server-vpn-rras-on-server)
-5. [Phase 2: Configure Static IPv4 Pool (192.168.1.220 - 192.168.1.240)](#phase-2-configure-static-ipv4-pool-1921681220---1921681240)
-6. [Phase 3: Configure RADIUS Server (Network Policy Server - NPS)](#phase-3-configure-radius-server-network-policy-server---nps)
-7. [Phase 4: Configure Active Directory Dial-in Permissions](#phase-4-configure-active-directory-dial-in-permissions)
-8. [Phase 5: Route Private Subnet Through Cloudflare Tunnel (Ezecom CGNAT Bypass)](#phase-5-route-private-subnet-through-cloudflare-tunnel-ezecom-cgnat-bypass)
-9. [Phase 6: Remote Client Setup & Testing (Outside Coffee Shop / 4G)](#phase-6-remote-client-setup--testing-outside-coffee-shop--4g)
-10. [Phase 7: Live Verification on Server (RRAS & Active Sessions)](#phase-7-live-verification-on-server-rras--active-sessions)
-11. [Troubleshooting Common Issues & Error Codes](#troubleshooting-common-issues--error-codes)
+4. [Phase 1: Install Server Roles in Server Manager (VPN & RADIUS)](#phase-1-install-server-roles-in-server-manager-vpn--radius)
+5. [Phase 2: Configure Windows Server VPN (RRAS) on Server](#phase-2-configure-windows-server-vpn-rras-on-server)
+6. [Phase 3: Configure Static IPv4 Pool (192.168.1.220 - 192.168.1.240)](#phase-3-configure-static-ipv4-pool-1921681220---1921681240)
+7. [Phase 4: Configure RADIUS Server (Network Policy Server - NPS)](#phase-4-configure-radius-server-network-policy-server---nps)
+8. [Phase 5: Configure Active Directory Dial-in Permissions](#phase-5-configure-active-directory-dial-in-permissions)
+9. [Phase 6: Cloudflare Zero-Trust Private Network Setup (Bypassing Ezecom CGNAT)](#phase-6-cloudflare-zero-trust-private-network-setup-bypassing-ezecom-cgnat)
+10. [Phase 7: Remote Client Setup & Testing (Outside Coffee Shop / 4G)](#phase-7-remote-client-setup--testing-outside-coffee-shop--4g)
+11. [Phase 8: Live Verification on Server (RRAS & Active Sessions)](#phase-8-live-verification-on-server-rras--active-sessions)
+12. [Troubleshooting Common Issues & Error Codes](#troubleshooting-common-issues--error-codes)
 
 ---
 
@@ -89,11 +90,47 @@ This architecture allows remote users (sitting at a coffee shop or anywhere in t
 
 ---
 
-## Phase 1: Configure Windows Server VPN (RRAS) on Server
+## Phase 1: Install Server Roles in Server Manager (VPN & RADIUS)
 
 On **`pro-win-server`** (`192.168.1.10`):
 
-### 1.1 Open Routing and Remote Access Console
+### 1.1 Open Add Roles and Features Wizard:
+1. Open **Server Manager**.
+2. Click **Manage** (top right corner) ──► select **Add Roles and Features**.
+3. On the **Before You Begin** screen ──► click **Next**.
+4. Select **Role-based or feature-based installation** ──► click **Next**.
+5. Select server **`WIN-J17IMHCEMA9`** (`192.168.1.10`) ──► click **Next**.
+
+### 1.2 Select the 2 Server Roles:
+Under the **Server Roles** list, check these **TWO roles**:
+* ✅ **Network Policy and Access Services**  
+  *(A popup will appear: click **Add Features**)*  
+  👉 *This installs the RADIUS / NPS Server!*
+* ✅ **Remote Access**  
+  👉 *This installs the VPN / RRAS Server!*
+
+Click **Next** ──► click **Next** past Features.
+
+### 1.3 Select Role Services for Remote Access:
+1. Click **Next** past the *Network Policy and Access Services* overview.
+2. Click **Next** past the *Remote Access* overview.
+3. On the **Role Services** screen for Remote Access, check:
+   * ✅ **DirectAccess and VPN (RAS)**  
+     *(A popup will appear: click **Add Features**)*
+   * ✅ **Routing** *(Enables LAN routing and packet forwarding)*
+
+### 1.4 Install:
+1. Click **Next** ──► review the confirmation screen.
+2. Click **Install**! *(Installation takes ~1–2 minutes)*.
+3. Once the progress bar reaches **"Installation succeeded"** ──► click **Close**!
+
+---
+
+## Phase 2: Configure Windows Server VPN (RRAS) on Server
+
+On **`pro-win-server`** (`192.168.1.10`):
+
+### 2.1 Open Routing and Remote Access Console
 1. Press **`Win + R`** ──► type:
    ```cmd
    rrasmgmt.msc
@@ -103,7 +140,7 @@ On **`pro-win-server`** (`192.168.1.10`):
    **`WIN-J17IMHCEMA9 (local)`**  
    *(Notice the red downward arrow 🔴 indicating the service is unconfigured).*
 
-### 1.2 Launch the Configuration Wizard
+### 2.2 Launch the Configuration Wizard
 1. **Right-click** on **`WIN-J17IMHCEMA9 (local)`** ──► select **Configure and Enable Routing and Remote Access**.
 2. On the **Welcome** page ──► click **Next**.
 3. On the **Configuration** page:
@@ -122,11 +159,11 @@ On **`pro-win-server`** (`192.168.1.10`):
 
 ---
 
-## Phase 2: Configure Static IPv4 Pool (`192.168.1.220` - `192.168.1.240`)
+## Phase 3: Configure Static IPv4 Pool (`192.168.1.220` - `192.168.1.240`)
 
 By default, RRAS tries to lease IPs using DHCP. In enterprise environments, allocating a dedicated **Static Address Pool** prevents IP collisions and ensures VPN clients are easily identifiable in network logs.
 
-### 2.1 Configure the Static IP Pool in RRAS
+### 3.1 Configure the Static IP Pool in RRAS
 1. In `rrasmgmt.msc`, **right-click** on **`WIN-J17IMHCEMA9 (local)`** ──► select **Properties**.
 2. Click on the **IPv4** tab.
 3. Under **IPv4 address assignment**, select:  
@@ -145,11 +182,11 @@ By default, RRAS tries to lease IPs using DHCP. In enterprise environments, allo
 
 ---
 
-## Phase 3: Configure RADIUS Server (Network Policy Server - NPS)
+## Phase 4: Configure RADIUS Server (Network Policy Server - NPS)
 
 Network Policy Server (NPS) acts as the centralized **AAA (Authentication, Authorization, and Accounting)** engine.
 
-### 3.1 Register NPS in Active Directory
+### 4.1 Register NPS in Active Directory
 1. Press **`Win + R`** ──► type:
    ```cmd
    nps.msc
@@ -158,7 +195,7 @@ Network Policy Server (NPS) acts as the centralized **AAA (Authentication, Autho
 3. Right-click on **`NPS (Local)`** at the top of the left tree ──► select **Register server in Active Directory**.
 4. Click **OK** on the authorization prompt ──► click **OK** on the confirmation.
 
-### 3.2 Create the VPN Authorization Policy
+### 4.2 Create the VPN Authorization Policy
 1. In `nps.msc`, expand **Policies** in the left menu ──► click **Network Policies**.
 2. In the right pane, **right-click** in blank space ──► select **New**.
 3. **Policy Name:** Type `Allow_VPN_Access`  
@@ -182,17 +219,17 @@ Network Policy Server (NPS) acts as the centralized **AAA (Authentication, Autho
 8. **Configure Settings:** Click **Next** (keep defaults).
 9. Click **Finish**!
 
-### 3.3 Set Policy Processing Order
+### 4.3 Set Policy Processing Order
 1. Click on your newly created policy **`Allow_VPN_Access`**.
 2. Click **Move Up** in the right Actions pane until it is at **Processing Order: 1** (above any default deny rules).
 
 ---
 
-## Phase 4: Configure Active Directory Dial-in Permissions
+## Phase 5: Configure Active Directory Dial-in Permissions
 
 Active Directory stores the individual dial-in authorization flag on each user account.
 
-### 4.1 Set Dial-in Permission for User `s.pengseang`
+### 5.1 Set Dial-in Permission for User `s.pengseang`
 1. Press **`Win + R`** ──► type:
    ```cmd
    dsa.msc
@@ -208,7 +245,7 @@ Active Directory stores the individual dial-in authorization flag on each user a
 
 ---
 
-## Phase 5: Cloudflare Zero-Trust Private Network Setup (Bypassing Ezecom CGNAT)
+## Phase 6: Cloudflare Zero-Trust Private Network Setup (Bypassing Ezecom CGNAT)
 
 Now we connect your local server network to Cloudflare's global edge so outside users can reach `192.168.1.10` over Ezecom without any router port-forwarding!
 
@@ -267,7 +304,7 @@ By default, Cloudflare WARP ignores local IPs like `192.168.x.x`. We need to tel
 
 ---
 
-## Phase 6: Remote Client Setup & Testing (Outside Coffee Shop / 4G)
+## Phase 7: Remote Client Setup & Testing (Outside Coffee Shop / 4G)
 
 Now, on any computer or smartphone outside your home (or connected to 4G mobile data):
 
@@ -313,7 +350,7 @@ ping 192.168.1.10
 
 ---
 
-### 6.3 Connect to the Windows Server RRAS VPN (The Identity Overlay)
+### 7.3 Connect to the Windows Server RRAS VPN (The Identity Overlay)
 Now establish the official Windows Server RRAS connection:
 
 1. Click **Start** ──► **Settings** ──► **Network & Internet** ──► **VPN**.
@@ -332,7 +369,7 @@ Now establish the official Windows Server RRAS connection:
 
 ---
 
-### 6.4 Verify Leased IP on Client:
+### 7.4 Verify Leased IP on Client:
 Open Command Prompt on the client and run:
 
 ```cmd
@@ -349,11 +386,11 @@ PPP adapter E6_Corporate_VPN:
 
 ---
 
-## Phase 7: Live Verification on Server (RRAS & Active Sessions)
+## Phase 8: Live Verification on Server (RRAS & Active Sessions)
 
 On **`pro-win-server`**, verify the active remote connection:
 
-### 7.1 Inspect Live Sessions in RRAS Console:
+### 8.1 Inspect Live Sessions in RRAS Console:
 1. Open `rrasmgmt.msc`.
 2. Expand **`WIN-J17IMHCEMA9 (local)`** ──► click **Remote Access Clients**.
 3. In the center pane, you will see your active session:
@@ -362,7 +399,7 @@ On **`pro-win-server`**, verify the active remote connection:
    * **Number of Ports:** `1`
    * **Assigned IP:** `192.168.1.221`
 
-### 7.2 Inspect Live RADIUS Authentication in PowerShell:
+### 8.2 Inspect Live RADIUS Authentication in PowerShell:
 ```powershell
 Get-WinEvent -LogName "Security" -FilterXPath "*[System[(EventID=6272 or EventID=6278)]]" -MaxEvents 3 | Format-List TimeCreated, Message
 ```
