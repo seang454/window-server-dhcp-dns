@@ -223,6 +223,55 @@ The VPN server needs a dedicated pool of IP addresses to assign to incoming remo
 
 ---
 
+#### 🔍 Deep-Dive: Why Static IP Pool is Essential (DHCP Disasters vs. Static Pool)
+
+##### 1️⃣ What is this Step For?
+When an employee connects to your VPN from home or a coffee shop, their laptop **MUST receive an internal IP address** (like `192.168.1.221`) so it can talk to your File Shares, Oracle Database, and DNS Server.
+
+By default, Windows RRAS gives you **TWO ways** to hand out IP addresses to VPN users:
+1. ❌ **Option A: DHCP (Dynamic Host Configuration Protocol) — The Default**
+2. 🏆 **Option B: Static Address Pool — The Enterprise Best Practice**
+
+This step switches your server from **Option A (DHCP)** to **Option B (Static Pool)**!
+
+---
+
+##### 2️⃣ Why Using DHCP for VPN Causes Disasters (The 3 Problems):
+
+* 💥 **1. The "Error 733" Connection Crash:**  
+  If the DHCP server is busy, or if the DHCP relay agent has a 2-second lag, remote clients trying to connect to the VPN will fail immediately with:  
+  *`Error 733: A connection to the remote computer could not be established because the DHCP server did not respond.`*
+* 🕳️ **2. DHCP IP Starvation:**  
+  When RRAS starts in DHCP mode, it requests a block of **10 to 20 IP addresses in advance** from your DHCP server, even if ZERO users are connected! This steals IP addresses from real physical computers in the office, causing local desktops to run out of IPs!
+* 🕵️ **3. "Logging Blindness" (Cybersecurity Nightmare):**  
+  If an audit log records an event from `192.168.1.105` at 2:00 AM, the security team cannot tell if it was an on-site physical PC or a remote VPN worker from home, because both share the same random DHCP range!
+
+---
+
+##### 3️⃣ The 4 Super-Powers of Static Address Pool (`192.168.1.220 - 240`):
+
+* 🛡️ **1. Guaranteed Zero IP Conflicts (Clean Subnet Architecture):**  
+  ```text
+  ┌─────────────────────────────────────────────────────────────┐
+  │                 YOUR NETWORK IP SUBNET MAP                  │
+  ├───────────────────┬─────────────────────────────────────────┤
+  │ 192.168.1.1       │ Huawei Router (Default Gateway)         │
+  │ 192.168.1.10      │ Windows Server (DC / DNS / Web / DB)    │
+  │ 192.168.1.100-200 │ Local Office Desktops (DHCP Pool)       │
+  │ 192.168.1.201-219 │ Network Printers & Switches             │
+  │ 192.168.1.220-240 │ 🔒 DEDICATED REMOTE VPN WORKERS!        │
+  └───────────────────┴─────────────────────────────────────────┘
+  ```
+  Because the ranges **never overlap**, it is mathematically impossible for a VPN user to collide with an office PC!
+* 🚨 **2. Instant Threat Identification (Forensics):**  
+  If your firewall or Oracle Database log shows a connection from `192.168.1.225`, the IT security team immediately knows without searching: *"That is a REMOTE VPN WORKER outside the office!"*
+* 🧱 **3. Easy Firewall Security Policies (ACLs):**  
+  You can write firewall rules specifically for remote workers (e.g. allow local desktops `.100-.200` to access payroll servers, but restrict remote VPN users `.220-.240`).
+* ⚡ **4. Instant Connection Speed (Zero Lag):**  
+  RRAS holds the 21 IP addresses in its own memory. When user `s.pengseang` connects, RRAS assigns the IP in **0.001 seconds** directly without waiting for any DHCP handshake!
+
+---
+
 ### Phase 4: Configure Network Policy Server (NPS - RADIUS)
 
 Now we configure the RADIUS Server to authenticate VPN users:
