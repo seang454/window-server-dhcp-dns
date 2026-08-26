@@ -293,6 +293,26 @@ Now we configure the RADIUS Server to authenticate VPN users:
 2. By default, there are two disabled policies: *"Connections to other access servers"* and *"Connections to Microsoft Routing and Remote Access server"*.
 3. Right-click **Network Policies** ──► select **New**.
 4. Name the policy: **`Allow_VPN_Access`** ──► **Type of network access server:** select **Remote Access Server (VPN-Dial up)** ──► click **Next**.
+
+---
+
+#### 🔍 Deep-Dive: What Does "Type of Network Access Server" (NAS) Mean?
+
+In RADIUS protocol architecture (RFC 2865), a **Network Access Server (NAS)** is the **Gatekeeper Device** that intercepts remote users before they enter the internal network. This dropdown tells NPS which type of gatekeeper this policy applies to:
+
+| Option | What It Is | When Is It Used? | Do We Choose It? |
+|:---|:---|:---|:---:|
+| **1. `Unspecified`** | **Wildcard / Any Gatekeeper** | Used for generic or 3rd-party equipment (Cisco Wi-Fi Access Points, Aruba switches, Fortinet firewalls). Matches *any* incoming RADIUS request. | ❌ No (Too broad; could accidentally affect other services). |
+| **2. `Remote Desktop Gateway`** | **RDP over HTTPS (Step 5)** | Used specifically for **RD Gateway** (Terminal Server from Step 5) to control who can RDP through port 443. | ❌ No (This is for RDP desktop connections, not VPN tunnels). |
+| **3. `Remote Access Server (VPN-Dial up)`** 🏆 | **Microsoft RRAS VPN Server (Step 6)** | Tells NPS to apply this policy **ONLY to incoming VPN connections** (SSTP, PPTP, L2TP) coming from RRAS! | 🏆 **YES! THIS IS THE ONE!** |
+
+##### 🏢 Real-World Analogy:
+* 🚪 **Unspecified:** A generic security rule that applies to any random door on campus.
+* 🖥️ **Remote Desktop Gateway:** The security guard checking badges specifically at the Computer Terminal Room.
+* 🛡️ **Remote Access Server (VPN-Dial up):** The security guard stationed specifically at the Secure Underground Tunnel (VPN)!
+
+---
+
 5. On **Specify Conditions**: Click **Add...** ──► select **User Groups** ──► click **Add Groups...** ──► type: **`Domain Users`** ──► click **OK** ──► click **Next**.
 6. On **Specify Access Permission**: Select **Access granted** ──► click **Next**.
 7. On **Configure Authentication Methods**:
@@ -300,6 +320,23 @@ Now we configure the RADIUS Server to authenticate VPN users:
    * Check ✅ **Microsoft Encrypted Authentication (MS-CHAP)**
    * Click **Next**.
 8. Click **Next** through Constraints and Settings ──► click **Finish**!
+
+---
+
+#### 🔍 Deep-Dive: What are "Constraints" in Network Policy Server (NPS)?
+
+In RADIUS security, **Constraints** represent the **Limits and Operating Boundaries** of a connection. While Conditions verify *who* is connecting, Constraints dictate *under what terms* they are allowed to remain connected. If a single constraint is violated, NPS instantly rejects or terminates the connection.
+
+| Constraint | What It Controls | Enterprise Security Purpose | Lab Recommendation |
+|:---|:---|:---|:---:|
+| **1. Idle Timeout** | Inactivity threshold | Automatically disconnects users if no network packets are sent/received for $X$ minutes. Prevents unattended workstations from remaining an open entry point and reclaims VPN IP pool addresses. | Keep Unchecked (Default) |
+| **2. Session Timeout** | Maximum total session lifetime | Hard connection cut-off after $X$ hours regardless of user activity. Enforces periodic re-authentication to mitigate risks from lost or stolen devices. | Keep Unchecked (Default) |
+| **3. Called Station ID** | Destination identifier (MAC/SSID/Phone) | Restricts access based on the phone number dialed or the specific BSSID/MAC address of the wireless access point. | Keep Unchecked (Default) |
+| **4. Day and Time Restrictions** | Schedule calendar grid | Enforces strict working hour policies (e.g. Monday–Friday 08:00–17:00). Blocks off-hours and weekend access to counter brute-force attacks. | Keep Unchecked (Default) |
+| **5. NAS Port Type** | Physical/virtual transport type | Restricts policies to specific media (e.g. `Virtual (VPN)`, `Wireless - IEEE 802.11`, `Ethernet`) to avoid cross-contamination of access rules. | Keep Unchecked (Default) |
+
+> 💡 **Why Keep Unchecked for Testing?**  
+> Leaving constraints at default disables timeouts and time locks, ensuring smooth testing at any time of day without artificial disconnections!
 
 ---
 

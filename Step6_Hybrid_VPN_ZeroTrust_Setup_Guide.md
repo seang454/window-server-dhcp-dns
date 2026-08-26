@@ -354,6 +354,26 @@ In RADIUS protocol architecture (RFC 2865), a **Network Access Server (NAS)** is
      * ✅ **Microsoft Encrypted Authentication version 2 (MS-CHAP-v2)**
    * Click **Next**.
 7. **Configure Constraints:** Click **Next** (keep defaults).
+
+---
+
+#### 🔍 Deep-Dive: What are "Constraints" in Network Policy Server (NPS)?
+
+In RADIUS security, **Constraints** represent the **Limits and Operating Boundaries** of a connection. While Conditions verify *who* is connecting, Constraints dictate *under what terms* they are allowed to remain connected. If a single constraint is violated, NPS instantly rejects or terminates the connection.
+
+| Constraint | What It Controls | Enterprise Security Purpose | Lab Recommendation |
+|:---|:---|:---|:---:|
+| **1. Idle Timeout** | Inactivity threshold | Automatically disconnects users if no network packets are sent/received for $X$ minutes. Prevents unattended workstations from remaining an open entry point and reclaims VPN IP pool addresses. | Keep Unchecked (Default) |
+| **2. Session Timeout** | Maximum total session lifetime | Hard connection cut-off after $X$ hours regardless of user activity. Enforces periodic re-authentication to mitigate risks from lost or stolen devices. | Keep Unchecked (Default) |
+| **3. Called Station ID** | Destination identifier (MAC/SSID/Phone) | Restricts access based on the phone number dialed or the specific BSSID/MAC address of the wireless access point. | Keep Unchecked (Default) |
+| **4. Day and Time Restrictions** | Schedule calendar grid | Enforces strict working hour policies (e.g. Monday–Friday 08:00–17:00). Blocks off-hours and weekend access to counter brute-force attacks. | Keep Unchecked (Default) |
+| **5. NAS Port Type** | Physical/virtual transport type | Restricts policies to specific media (e.g. `Virtual (VPN)`, `Wireless - IEEE 802.11`, `Ethernet`) to avoid cross-contamination of access rules. | Keep Unchecked (Default) |
+
+> 💡 **Why Keep Unchecked for Testing?**  
+> Leaving constraints at default disables timeouts and time locks, ensuring smooth testing at any time of day without artificial disconnections!
+
+---
+
 8. **Configure Settings:** Click **Next** (keep defaults).
 9. Click **Finish**!
 
