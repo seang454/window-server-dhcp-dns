@@ -350,6 +350,45 @@ SELECT * FROM hr.employees WHERE ROWNUM <= 3;
 ```
 * 🟢 **Result:** **100% Success!** `SYSDBA` has full kernel root control and can read all user data.
 
+#### 👑 Deep-Dive: Does `ALTER SESSION SET CONTAINER = orclpdb;` Change Your User or Role?
+
+**NO! You REMAIN 100% `SYSDBA`!**
+
+Running `ALTER SESSION SET CONTAINER = orclpdb;` does **NOT** change your username or role:
+* **Username:** Remains **`SYS`** *(Does NOT change!)*
+* **Role:** Remains 👑 **`SYSDBA`** *(Does NOT change!)*
+* **Scope / Workspace:** Changes from `CDB$ROOT` to **`ORCLPDB`**!
+
+🏢 **Building Manager Analogy:** Think of `SYSDBA` as the **Chief Building Manager with master keys**. When the Chief Building Manager walks out of the Main Building Lobby (`CDB$ROOT`) and steps into Apartment 101 (`ORCLPDB`), **they are STILL the Chief Building Manager with master keys!** They did not turn into a tenant — they just stepped inside Apartment 101 to inspect or fix things!
+
+```sql
+-- 1. SYSDBA starts in CDB$ROOT
+SELECT SYS_CONTEXT('USERENV', 'SESSION_USER') AS current_user,
+       SYS_CONTEXT('USERENV', 'CON_NAME') AS current_container
+FROM dual;
+-- Returns: SYS | CDB$ROOT
+
+-- 2. Switch Container Scope into ORCLPDB
+ALTER SESSION SET CONTAINER = orclpdb;
+
+-- 3. Verify User & Role (STILL SYS with SYSDBA power!)
+SELECT SYS_CONTEXT('USERENV', 'SESSION_USER') AS current_user,
+       SYS_CONTEXT('USERENV', 'CON_NAME') AS current_container
+FROM dual;
+-- Returns: SYS | ORCLPDB
+
+-- 4. SYSDBA creates & grants on HR schema inside ORCLPDB
+CREATE TABLE hr.company_projects (
+    project_id NUMBER PRIMARY KEY,
+    project_name VARCHAR2(100)
+);
+
+INSERT INTO hr.company_projects VALUES (1, 'Enterprise_Oracle19c_Setup');
+COMMIT;
+
+GRANT SELECT ON hr.company_projects TO portfolio_user;
+```
+
 ---
 
 #### 🧪 Test 2: Open SQL Script in Connection 2 (`ORCL 2` - `SYS` as `SYSOPER`) ⚙️
