@@ -21,7 +21,8 @@
 8. [Step 6: Configure as a 24/7 Permanent Background Service (Windows Task Scheduler ⭐)](#step-6-configure-as-a-247-permanent-background-service-windows-task-scheduler-)
    * [6.3 How to Manually Edit, Validate, and Update config.yml Anytime](#63-how-to-manually-edit-validate-and-update-configyml-anytime)
 9. [Step 7: Test & Verify Globally (Phone 4G/5G & Worldwide)](#step-7-test--verify-globally-phone-4g5g--worldwide)
-10. [Troubleshooting & Handy Maintenance Commands](#troubleshooting--handy-maintenance-commands)
+10. [Step 8: How to Stop / Disable Specific Domains & How to Stop All Servers](#step-8-how-to-stop--disable-specific-domains--how-to-stop-all-servers)
+11. [Troubleshooting & Handy Maintenance Commands](#troubleshooting--handy-maintenance-commands)
 
 ---
 
@@ -506,7 +507,128 @@ Aliases:    5d585308-fb32-48a1-b0c5-13f3b4a478b5.cfargotunnel.com
 
 ---
 
-## 10. Troubleshooting & Handy Maintenance Commands
+## Step 8: How to Stop / Disable Specific Domains & How to Stop All Servers
+
+Depending on your maintenance needs, here is how to stop specific websites or shut down all server services:
+
+### 1️⃣ Scenario 1: Stop ONE Specific Domain (Keep other websites online)
+If you have multiple subdomains running and you want to temporarily take down **only one** (e.g. `portfolio.seang.shop`):
+
+1. Open `config.yml`:
+   ```cmd
+   notepad C:\cloudflared\config.yml
+   ```
+2. Comment out the rules for that specific domain with `#`:
+   ```yaml
+   ingress:
+     # Temporarily disabled:
+     # - hostname: portfolio.seang.shop
+     #   service: http://portfolio.e6.local
+     #   originRequest:
+     #     httpHostHeader: portfolio.e6.local
+
+     # Other services remain active:
+     # - hostname: api.seang.shop
+     #   service: http://localhost:5000
+
+     - service: http_status:404
+   ```
+3. Restart the background task:
+   ```powershell
+   Stop-ScheduledTask -TaskName "CloudflareTunnel247"
+   Start-ScheduledTask -TaskName "CloudflareTunnel247"
+   ```
+* 🟢 **Result:** Visitors to `portfolio.seang.shop` receive a clean `404 Not Found`, while other websites remain live!
+* 👉 **To restore:** Remove the `#` comments and restart the task.
+
+---
+
+### 2️⃣ Scenario 2: Emergency Public Kill-Switch (Stop ALL Public Access Instantly)
+If you want to immediately sever all public internet access to your server:
+
+```powershell
+# Stop the 24/7 tunnel immediately
+Stop-ScheduledTask -TaskName "CloudflareTunnel247"
+```
+* 🟢 **Result:** All incoming internet traffic is instantly cut off. Public visitors see `Error 1033: Site Offline`.
+* 👉 **To restore public access:**
+  ```powershell
+  Start-ScheduledTask -TaskName "CloudflareTunnel247"
+  ```
+
+---
+
+### 3️⃣ Scenario 3: Stop Web & Application Servers (Local Maintenance)
+If you want to stop the local web services without touching the tunnel:
+
+```powershell
+# Stop Next.js (PM2 Node.js process manager)
+pm2 stop all
+
+# Stop IIS 10 Web Server completely
+iisreset /stop
+```
+* 🟢 **Result:** Cloudflare returns `Error 502: Bad Gateway` (informing visitors the server is undergoing maintenance).
+* 👉 **To restart local web servers:**
+  ```powershell
+  pm2 start all
+  iisreset /start
+  ```
+
+---
+
+### 4️⃣ Scenario 4: Stop Database Servers (PostgreSQL & Oracle)
+To pause database engines to free up RAM or perform maintenance:
+
+```powershell
+# Stop PostgreSQL 18 Service
+Stop-Service postgresql*
+
+# Stop Oracle 19c Database & TNS Listener
+Stop-Service OracleService*
+Stop-Service Oracle*TNSListener
+```
+* 👉 **To restart databases:**
+  ```powershell
+  Start-Service postgresql*
+  Start-Service OracleService*
+  Start-Service Oracle*TNSListener
+  ```
+
+---
+
+### 5️⃣ Scenario 5: How to Stop / Restart the ENTIRE Server Gracefully
+To cleanly shut down or reboot the Windows Server VM:
+
+```powershell
+# Gracefully restart the server VM
+Restart-Computer -Force
+
+# Gracefully shut down the server VM completely
+Stop-Computer -Force
+```
+
+---
+
+### 📊 Master Server Management Cheat-Sheet:
+
+| Action | PowerShell Command |
+|:---|:---|
+| **Stop 1 domain** | Comment out domain in `C:\cloudflared\config.yml` ──► restart task |
+| **Stop Public Tunnel (Kill-Switch)** | `Stop-ScheduledTask -TaskName "CloudflareTunnel247"` |
+| **Start Public Tunnel** | `Start-ScheduledTask -TaskName "CloudflareTunnel247"` |
+| **Stop Next.js (PM2)** | `pm2 stop all` |
+| **Start Next.js (PM2)** | `pm2 start all` |
+| **Stop IIS Web Server** | `iisreset /stop` |
+| **Start IIS Web Server** | `iisreset /start` |
+| **Stop PostgreSQL** | `Stop-Service postgresql*` |
+| **Stop Oracle Database** | `Stop-Service OracleService*`, `Stop-Service Oracle*TNSListener` |
+| **Reboot Entire Server** | `Restart-Computer -Force` |
+| **Shutdown Entire Server** | `Stop-Computer -Force` |
+
+---
+
+## 11. Troubleshooting & Handy Maintenance Commands
 
 | Issue | Root Cause | Solution |
 |:---|:---|:---|
