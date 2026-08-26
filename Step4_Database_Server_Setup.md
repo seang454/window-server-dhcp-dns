@@ -53,30 +53,37 @@ Where does each user account live inside Oracle Database 19c?
 ```
                       ORACLE 19c USER LOCATION HIERARCHY
                       
-  =================================================================================
-  │ 🏢 CONTAINER DATABASE (CDB$ROOT - SID: orcl)                                  │
-  │                                                                               │
-  │  👑 Global System Accounts & Common Users (Exist Server-Wide):                │
-  │     ├── SYS                  <── (Root Superuser / SYSDBA)                    │
-  │     ├── SYSTEM               <── (Global DBA Admin)                           │
-  │     └── c##global_admin      <── (Custom Common User / Container = ALL)       │
-  ================================───────┬─────────────────────────────────────────
+  ========================================================================================
+  │ 🏢 CONTAINER DATABASE (CDB$ROOT - SID: orcl)                                         │
+  │                                                                                      │
+  │  👑 Global System Accounts & Common Users (Exist Server-Wide):                       │
+  │     ├── SYS                  <── (Root Superuser / SYSDBA)                           │
+  │     ├── SYSTEM               <── (Global DBA Admin)                                  │
+  │     └── c##global_admin      <── (Custom Common User / Container = ALL)              │
+  ================================───────┬────────────────────────────────────────────────
                                          │
                  ┌───────────────────────┴───────────────────────┐
                  │                                               │
-  ===============▼================               ================▼================
-  │ 🧬 PDB$SEED (Template PDB)   │               │ 📁 ORCLPDB (Service: orclpdb) │
-  │                              │               │                               │
-  │  (System Read-Only Template  │               │  🏢 Local Accounts & Schemas: │
-  │   used to clone new PDBs)    │               │     ├── PDBADMIN              │
-  │                              │               │     ├── HR                    │
-  │                              │               │     └── portfolio_user        │
-  ================================               =================================
+  ===============▼================               ================▼========================
+  │ 🧬 PDB$SEED (Template PDB)   │               │ 📁 ORCLPDB (Service: orclpdb)         │
+  │                              │               │                                       │
+  │  (System Read-Only Template  │               │  🏢 Visible Accounts & Schemas:       │
+  │   used to clone new PDBs)    │               │     ├── SYSTEM    <── (Via Inheritance)│
+  │                              │               │     ├── PDBADMIN  <── (100% Local)     │
+  │                              │               │     ├── HR        <── (100% Local)     │
+  │                              │               │     └── portfolio_user (100% Local)   │
+  ================================               =========================================
 ```
 
-### 📊 Summary of User Locations:
-1. **`CDB$ROOT` (Container Level):** Stores **`SYS`**, **`SYSTEM`**, and **`c##...`** common users. They have visibility across the entire server.
-2. **`ORCLPDB` (Pluggable Database Level):** Stores **`PDBADMIN`**, **`HR`**, and **`portfolio_user`**. They stay strictly inside `orclpdb` and cannot see other PDBs.
+### 📊 Summary of User Locations & Inheritance:
+1. **`CDB$ROOT` (Container Level):** Stores **`SYS`**, **`SYSTEM`**, and **`c##...`** common users. They have global visibility across the entire server.
+2. **`ORCLPDB` (Pluggable Database Level):**
+   * **`SYSTEM`:** Visible inside `ORCLPDB` via **inheritance** from the Root Container (`CDB$ROOT`).
+   * **`PDBADMIN`**, **`HR`**, **`portfolio_user`:** Live **100% locally** inside `ORCLPDB` data dictionary space.
+
+#### 💡 What happens if you create a 2nd Pluggable Database (e.g. `FINANCE_PDB`)?
+* 🛡️ **`SYSTEM`:** Will **automatically appear** in `FINANCE_PDB` as well! *(Because `SYSTEM` is a global common user defined at the root container level across the whole server)*.
+* 👤 **`PDBADMIN`:** Will **NOT exist** in `FINANCE_PDB`! *(Because `PDBADMIN` belongs 100% strictly to `ORCLPDB`)*.
 
 ---
 
