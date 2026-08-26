@@ -100,36 +100,41 @@ Set-Location "C:\cloudflared"
 Invoke-WebRequest -Uri "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe" -OutFile "C:\cloudflared\cloudflared.exe"
 ```
 
+### 💡 Detailed Explanation of Step 1 Commands:
+
+| Command & Parameter | What It Does & Why It Is Used |
+|:---|:---|
+| `New-Item -ItemType Directory -Path "C:\cloudflared" -Force` | **Creates the Home Folder:** Creates a clean, dedicated folder `C:\cloudflared\` on the server's primary drive. The `-Force` flag prevents errors if the folder already exists. |
+| `Set-Location "C:\cloudflared"` | **Switches Directory:** Changes PowerShell's working directory (`cd`) to `C:\cloudflared\` so all subsequent downloads and commands run directly inside this folder. |
+| `Invoke-WebRequest -Uri ... -OutFile ...` | **Downloads the Agent:** Downloads the official, pre-compiled Cloudflare Tunnel agent binary (`cloudflared.exe`) directly from Cloudflare's GitHub releases. The `-OutFile` parameter saves it as an executable ready to run. |
+
 ---
 
 ## Step 2: Authenticate with Domain (cloudflared login)
 
-Connect your server to your Cloudflare account without needing API keys or passwords:
+Connect your server to your Cloudflare account without needing API keys, credit cards, or passwords:
 
 ```powershell
 .\cloudflared.exe tunnel login
 ```
 
-### 🔍 What happens:
-1. PowerShell displays:
-   ```text
-   A browser window should have opened at the following URL:
-   https://dash.cloudflare.com/argotunnel?aud=...
-   ```
-2. Your default browser opens the Cloudflare authorization page.
-3. Select your domain: **`seang.shop`** ──► click **Authorize**!
-4. PowerShell automatically detects authorization and outputs:
-   ```text
-   INF You have successfully logged in.
-   If you wish to copy your credentials to a server, they have been saved to:
-   C:\Users\Administrator\.cloudflared\cert.pem
-   ```
+### 💡 Detailed Explanation of Step 2 Command:
+
+* **What it is used for:** Performs a secure, browser-based OAuth authentication handshake between your local Windows Server and Cloudflare's central management systems.
+* **How it works behind the scenes:**
+  1. `cloudflared` starts a temporary local HTTP listener on your server.
+  2. It generates a unique URL and opens your default browser.
+  3. You select your registered domain: **`seang.shop`** ──► click **Authorize**.
+  4. Cloudflare signs a cryptographic certificate and sends it back to your server.
+  5. The certificate is saved as:  
+     `C:\Users\Administrator\.cloudflared\cert.pem`
+* **Why this is critical:** This `cert.pem` file acts as your **cryptographic passport**. It grants this specific server permission to create and manage tunnels for `seang.shop` forever, without you ever having to type account passwords again!
 
 ---
 
 ## Step 3: Create the Named Tunnel (tunnel create)
 
-Create the persistent tunnel entity on Cloudflare:
+Create the persistent tunnel entity on Cloudflare's global edge network:
 
 ```powershell
 .\cloudflared.exe tunnel create pro-win-tunnel
@@ -143,15 +148,21 @@ cloudflared chose this file based on where your origin certificate was found. Ke
 Created tunnel pro-win-tunnel with id 5d585308-fb32-48a1-b0c5-13f3b4a478b5
 ```
 
-* 🔑 **Tunnel Name:** `pro-win-tunnel`
-* 🆔 **Tunnel ID:** `5d585308-fb32-48a1-b0c5-13f3b4a478b5`
-* 📄 **Credentials File:** `C:\Users\Administrator\.cloudflared\<TUNNEL-ID>.json`
+### 💡 Detailed Explanation of Step 3 Command:
+
+* **`tunnel create pro-win-tunnel`:** Tells Cloudflare to allocate a new virtual tunnel named `pro-win-tunnel`.
+* **What happens behind the scenes:**
+  1. Cloudflare assigns a **Globally Unique Identifier (UUID)** to your tunnel:  
+     `5d585308-fb32-48a1-b0c5-13f3b4a478b5`
+  2. A private credential file is created:  
+     `C:\Users\Administrator\.cloudflared\<TUNNEL-ID>.json`
+  3. This `.json` file contains a private encryption secret key. When the tunnel starts, it uses this key to authenticate directly to Cloudflare's edge data centers.
 
 ---
 
 ## Step 4: Route Public DNS to the Tunnel (tunnel route dns)
 
-Create the public DNS record automatically:
+Connect your public subdomain to the tunnel automatically:
 
 ```powershell
 .\cloudflared.exe tunnel route dns pro-win-tunnel portfolio.seang.shop
@@ -162,28 +173,43 @@ Create the public DNS record automatically:
 INF Added CNAME portfolio.seang.shop which will route to this tunnel tunnelID=5d585308-fb32-48a1-b0c5-13f3b4a478b5
 ```
 
-* Cloudflare automatically creates a **CNAME** in your DNS table:  
-  `portfolio.seang.shop` ──► `5d585308-fb32-48a1-b0c5-13f3b4a478b5.cfargotunnel.com` (Proxied 🟧).
+### 💡 Detailed Explanation of Step 4 Command:
+
+* **What it is used for:** Automates DNS management so you do not have to touch the Cloudflare website DNS dashboard!
+* **How it works:**  
+  * Cloudflare injects a new **CNAME** record into your public DNS zone for `seang.shop`.
+  * The record points:  
+    `portfolio.seang.shop` ──► `5d585308-fb32-48a1-b0c5-13f3b4a478b5.cfargotunnel.com`
+  * Cloudflare automatically enables the **Orange Cloud (Proxy)** 🟧. This ensures all public traffic passes through Cloudflare's DDoS protection and SSL certificate first, keeping your home IP 100% hidden!
 
 ---
 
 ## Step 5: Run the Tunnel (tunnel run)
 
-### Method A: Route through IIS Reverse Proxy (`portfolio.e6.local`)
-If your site uses the IIS reverse proxy configured in Step 3:
+Start the tunnel engine to begin bridging public traffic into your local server:
+
+### Method A: Route through IIS Reverse Proxy (`portfolio.e6.local`) ⭐ *(What You Ran!)*
 
 ```powershell
 .\cloudflared.exe tunnel run --url http://portfolio.e6.local --http-host-header portfolio.e6.local pro-win-tunnel
 ```
 
 ### Method B: Route Directly to Next.js (`localhost:3000`)
-If you want Cloudflare to talk straight to the Node.js/PM2 application:
 
 ```powershell
 .\cloudflared.exe tunnel run --url http://localhost:3000 pro-win-tunnel
 ```
 
-### 🔍 Live Output (Active Global Connections):
+### 💡 Detailed Breakdown of Every Flag in Step 5:
+
+| Flag / Parameter | What It Does & Why It Is Essential |
+|:---|:---|
+| `tunnel run` | **Starts the Engine:** Instructs `cloudflared` to establish active outgoing tunnels to the nearest Cloudflare global edge servers. |
+| `pro-win-tunnel` | **The Tunnel Name:** Identifies which registered tunnel to start using its stored JSON secret key. |
+| `--url http://portfolio.e6.local` | **The Destination Service:** Tells Cloudflare where to send incoming web traffic inside your server. In this case, forward it to your local IIS site `http://portfolio.e6.local`! |
+| `--http-host-header portfolio.e6.local` | **Host Header Rewriter (Crucial for IIS!):** When a visitor visits `https://portfolio.seang.shop`, their browser sends `Host: portfolio.seang.shop`. Since your IIS web server has site bindings listening specifically for `portfolio.e6.local`, this flag rewrites the HTTP header so IIS recognizes the request and displays your website! |
+
+### 🔍 Live Output (Global Edge Connections):
 ```text
 INF Precheck complete hard_fail=false suggested_protocol=quic
 INF Registered tunnel connection connIndex=0 location=sin16 protocol=quic
@@ -192,7 +218,7 @@ INF Registered tunnel connection connIndex=2 location=sin09 protocol=quic
 INF Registered tunnel connection connIndex=3 location=sin02 protocol=quic
 ```
 
-* 🟢 **Status:** Tunnel is 100% active, load-balanced across 4 Cloudflare edge servers in Singapore (`sin`) over the QUIC protocol!
+* 🟢 **Technical Meaning:** Your server has established **4 parallel, redundant QUIC (UDP 443) tunnels** to Cloudflare edge data centers in Singapore (`sin`). If one connection hiccups, traffic automatically switches to the others with zero downtime!
 
 ---
 
@@ -217,28 +243,49 @@ ingress:
 "@ | Out-File -FilePath "C:\cloudflared\config.yml" -Encoding ascii
 ```
 
-*(Note: If routing directly to Next.js, change `service: http://localhost:3000` and remove `originRequest`)*
+### 💡 Detailed Explanation of `config.yml`:
+
+| Configuration Key | What It Does |
+|:---|:---|
+| `tunnel: 5d585308-...` | Identifies your tunnel UUID. |
+| `credentials-file: ...` | Specifies the path to the private key JSON file required to authenticate. |
+| `ingress:` | Defines the routing table rules for incoming requests. |
+| `- hostname: portfolio.seang.shop` | Matches incoming traffic directed to `portfolio.seang.shop`. |
+| `service: http://portfolio.e6.local` | Forwards matching requests to your local IIS web server. |
+| `originRequest.httpHostHeader` | Injects the required IIS hostname header (`portfolio.e6.local`). |
+| `- service: http_status:404` | Catch-all rule: any unmatched requests receive a clean 404 Not Found error. |
+
+---
 
 ### 6.2 Install and Start the Windows Service
+
 ```powershell
-# Install the Windows Service pointing to your config file
+# 1. Install cloudflared as a native background Windows Service
 C:\cloudflared\cloudflared.exe --config "C:\cloudflared\config.yml" service install
 
-# Start the service
+# 2. Start the Windows Service
 Start-Service cloudflared
 
-# Verify it is running 24/7
+# 3. Confirm it is running 24/7
 Get-Service cloudflared
 ```
 
-Output:
+### 💡 Detailed Explanation of Service Commands:
+
+| Command | What It Does & Why It Is Used |
+|:---|:---|
+| `... service install` | **Registers Service in Windows:** Adds `cloudflared` into Windows Service Control Manager (`services.msc`) with `StartupType: Automatic`. It will now launch automatically when Windows Server boots up, before anyone even logs in! |
+| `Start-Service cloudflared` | **Starts Background Execution:** Starts the newly registered service immediately so the tunnel runs silently in the background. |
+| `Get-Service cloudflared` | **Status Check:** Verifies the service state is `Running`. |
+
+### 🔍 Expected Status Output:
 ```text
 Status   Name               DisplayName
 ------   ----               -----------
 Running  cloudflared        Cloudflare Tunnel
 ```
 
-* 🎉 **Result:** Even if you restart the server VM or log off, the tunnel **starts automatically on boot**!
+* 🎉 **Result:** Even if you restart the server VM or log off, the tunnel **starts automatically on boot** in the background!
 
 ---
 
