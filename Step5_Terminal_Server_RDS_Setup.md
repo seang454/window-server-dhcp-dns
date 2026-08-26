@@ -313,22 +313,81 @@ On **`pro-win-server` (`192.168.1.10`)**:
 
 ---
 
-### Phase 2: Authorize Domain Users for Remote Desktop Access
+### Phase 2: Authorize Domain Users for Remote Desktop Access (The 2 Mandatory Steps)
 
-By default, only domain administrators (`E6\Administrator`) can log in via Remote Desktop. Standard domain users (like `s.pengseang`) must be granted access.
+By default, only domain administrators (`E6\Administrator`) can log in via Remote Desktop. To grant domain users remote access on a Domain Controller, **two mandatory steps** must be completed.
 
-#### Method A: Via Active Directory Users and Computers (`dsa.msc`)
-1. Open **Active Directory Users and Computers** on `pro-win-server`.
-2. Expand `e6.local` → click **Builtin** folder.
-3. Double-click the security group **Remote Desktop Users**.
-4. Click **Members** tab → click **Add...**.
-5. Type **`s.pengseang`** (or **`Domain Users`** to allow all company employees) → click **Check Names** → click **OK**.
-6. Click **Apply** → click **OK**!
+---
 
-#### Method B: Via PowerShell (Fast ⚡)
+#### 🛠️ Step 2A: Add `Domain Users` to `Remote Desktop Users` Builtin Group
+
+Instead of adding individual users, we follow enterprise best practices by adding the entire **`Domain Users`** group:
+
+##### Method A: Via Active Directory Users and Computers (`dsa.msc`)
+1. Open **Active Directory Users and Computers (`dsa.msc`)** on `pro-win-server`.
+2. Expand `e6.local` ──► click **Builtin** folder.
+3. Double-click the security group **`Remote Desktop Users`**.
+4. Click **Members** tab ──► click **Add...**.
+5. Type **`Domain Users`** *(or `s.pengseang` for single-user testing)* ──► click **Check Names** ──► click **OK**.
+6. Click **Apply** ──► click **OK**!
+
+##### Method B: Via PowerShell (Instant ⚡)
 ```powershell
-Add-ADGroupMember -Identity "Remote Desktop Users" -Members "s.pengseang"
+Add-ADGroupMember -Identity "Remote Desktop Users" -Members "Domain Users"
 ```
+
+##### 🏢 Deep-Dive: Why Enterprise IT Uses Groups Instead of Individual Users (AGDLP Principle)
+
+In enterprise Active Directory environments, administrators **never** assign permissions to individual user accounts (`s.pengseang`, `alice`, `john`):
+
+1. **The Individual User Nightmare ❌:** If a company has 500 employees, adding individual users means modifying policies 500 times. When employees leave or transfer, IT must clean up hundreds of scattered permissions.
+2. **The Group-Based Power (`Domain Users`) ✅:** Adding **`Domain Users`** means every existing and newly hired employee instantly inherits Remote Desktop access automatically upon account creation!
+3. **The Gold Standard (AGDLP Role-Based Access) 🏆:** In large enterprises where only specific departments need RDP, sysadmins create a global group `RDS_Allowed_Users`, nest it inside `Remote Desktop Users`, and manage membership dynamically.
+
+| Method | Enterprise Rating | When to Use |
+|:---|:---:|:---|
+| Add individual user (`s.pengseang`) | ❌ **Poor Practice** | Only for quick temporary single-user tests. |
+| Add **`Domain Users`** | ✅ **Great Practice** | When all company employees should have remote access. |
+| Add custom role group (`RDS_Allowed_Users`) | 🏆 **Gold Standard** | When only specific departments should have remote access. |
+
+---
+
+#### 🛡️ Step 2B: Allow `Remote Desktop Users` in Domain Controller GPO User Rights Assignment
+
+##### ❓ Why is Step 2B Strictly Required on a Domain Controller?
+On a standard Windows member server, Step 2A is enough. **HOWEVER**, because `pro-win-server` is an **Active Directory Domain Controller**, Microsoft enforces an additional security lock:
+> ⚠️ On a Domain Controller, the security policy **"Allow log on through Remote Desktop Services"** by default **ONLY grants access to `Administrators`**! If this step is skipped, users receive:  
+> *"To sign in remotely, you need the right to sign in through Remote Desktop Services..."*
+
+##### 🛠️ Step-by-Step Configuration in `gpmc.msc`:
+1. On `pro-win-server`, press **`Win + R`** ──► type **`gpmc.msc`** ──► press **Enter**.
+2. Expand:
+   ```text
+   Forest: e6.local
+   └── Domains
+       └── e6.local
+           └── Domain Controllers
+   ```
+3. Right-click **`Default Domain Controllers Policy`** ──► click **Edit**.
+4. In the Group Policy Management Editor, navigate to:
+   ```text
+   Computer Configuration
+   └── Policies
+       └── Windows Settings
+           └── Security Settings
+               └── Local Policies
+                   └── User Rights Assignment
+   ```
+5. In the right pane, find and double-click:  
+   👉 **"Allow log on through Remote Desktop Services"**
+6. Click **Add User or Group...** ──► click **Browse...**.
+7. Type: **`Remote Desktop Users`** ──► click **Check Names** ──► click **OK** ──► click **OK**.
+8. Click **Apply** ──► click **OK**!
+9. Close the Group Policy Editor.
+10. In Command Prompt or PowerShell, enforce the policy immediately:
+    ```cmd
+    gpupdate /force
+    ```
 
 ---
 
