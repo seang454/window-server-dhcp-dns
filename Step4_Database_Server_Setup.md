@@ -448,8 +448,14 @@ Right-click **`ORCL 2`** → select **SQL Editor → Open SQL Script**, paste an
 SELECT SYS_CONTEXT('USERENV', 'SESSION_USER') AS current_user,
        SYS_CONTEXT('USERENV', 'CON_NAME') AS current_container
 FROM dual;
--- Expected Result: PUBLIC / SYS | CDB$ROOT
+-- Expected Result: PUBLIC | CDB$ROOT
+```
+* 🟢 **Result:** Returns `USER_NAME: PUBLIC` and `CONTAINER_NAME: CDB$ROOT`.
 
+##### ❓ Why does `SESSION_USER` show `PUBLIC` for `SYSOPER`?
+In Oracle Database security architecture, **`SYSOPER` is an Operator Privilege, not a Schema User**. When you log in `AS SYSOPER`, Oracle intentionally strips away schema ownership and maps your default session schema to **`PUBLIC`**. This guarantees that the operator session cannot read, write, or access any private tables in `SYS` or any user schema!
+
+```sql
 -- 2. Check Instance Status (SYSOPER can monitor instance)
 SELECT instance_name, status FROM v$instance;
 
@@ -458,7 +464,7 @@ SELECT * FROM hr.employees;
 ```
 * 🔴 **Expected Result for Query 3:**  
   **`ORA-01031: insufficient privileges`**  
-  *🏆 Proves 100% that `SYSOPER` is strictly blocked from reading private user data!*
+  *🏆 Proves 100% that `SYSOPER` is strictly mapped to `PUBLIC` and blocked from reading user data!*
 
 ---
 
