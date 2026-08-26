@@ -654,4 +654,58 @@ Microsoft created **SSTP (Secure Socket Tunneling Protocol)** specifically for W
   👉 **Nobody EVER blocks Port 443!** If a network blocked port 443, Google, YouTube, and banking websites would stop working!  
   So an SSTP VPN works **100% of the time, from anywhere in the world**!
 
+---
+
+### 🔒 How LOCAL VPN Testing Works Inside the Lab (The 4-Step Engine)
+
+Even though `pro-win-client` is already on the same switch, when you test the VPN from `pro-win-client` to `192.168.1.10`, here is the exact sequence that happens:
+
+```text
+  💻 pro-win-client (192.168.1.100)
+  Clicks "Connect" to 192.168.1.10 with user: E6\s.pengseang
+        │
+        │ 1. Client initiates VPN Handshake across the switch
+        ▼
+  🖥️ pro-win-server (RRAS VPN Engine)
+        │
+        │ 2. RRAS asks NPS (RADIUS) on UDP Port 1812:
+        │    "Is user s.pengseang allowed to connect?"
+        ▼
+  👑 Active Directory & NPS Policy
+        • Checks user: s.pengseang
+        • Checks password: abc@123
+        • Checks Dial-in Permission: "Allow Access"
+        • RADIUS radios back: "ACCESS-ACCEPT! 🟢"
+        │
+        ▼
+  🖥️ RRAS assigns a VIRTUAL IP from your static pool:
+        • Leases: 192.168.1.221
+        │
+        ▼
+  🎉 THE CLIENT NOW HAS TWO IP ADDRESSES!
+```
+
+#### 🔍 The Proof: Look at `ipconfig` on the Client!
+After connecting, if you open CMD on `pro-win-client` and type `ipconfig`, you will see **TWO separate network cards**:
+
+```cmd
+C:\> ipconfig
+
+Ethernet adapter Ethernet0:                 ◄── [Physical Local Card]
+   IPv4 Address. . . . . . . . . . . : 192.168.1.100
+
+PPP adapter Corporate_E6_VPN:               ◄── [VPN Encrypted Tunnel Card!]
+   IPv4 Address. . . . . . . . . . . : 192.168.1.221 🟢
+   Subnet Mask . . . . . . . . . . . : 255.255.255.255
+```
+
+#### 🏆 Why Testing Locally is so Powerful for University Labs:
+Even though you are testing inside VMware, you are testing **100% of the real enterprise security engine**:
+* ✅ The **Point-to-Point Tunneling (PPTP / SSTP)** encryption runs.
+* ✅ The **RADIUS (NPS) UDP 1812 AAA protocol** runs.
+* ✅ Active Directory authenticates **Domain User credentials**.
+* ✅ The server dynamically assigns **Virtual Tunnel IPs (`192.168.1.221`)**.
+* ✅ The server's RRAS console records **live bandwidth, connected user names, and connection duration**!
+
+
 
