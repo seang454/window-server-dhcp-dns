@@ -208,45 +208,89 @@ Active Directory stores the individual dial-in authorization flag on each user a
 
 ---
 
-## Phase 5: Route Private Subnet Through Cloudflare Tunnel (Ezecom CGNAT Bypass)
+## Phase 5: Cloudflare Zero-Trust Private Network Setup (Bypassing Ezecom CGNAT)
 
 Now we connect your local server network to Cloudflare's global edge so outside users can reach `192.168.1.10` over Ezecom without any router port-forwarding!
 
-### 5.1 Add Private Subnet Route via PowerShell
-On **`pro-win-server`**, open PowerShell as Administrator and run:
+### 🖥️ Part 1: On `pro-win-server` (The 1-Minute Step)
+
+Since you **already have `cloudflared.exe` installed and running 24/7**, you only need to run **one single command**!
+
+Open PowerShell as Administrator on `pro-win-server` and run:
 
 ```powershell
-# Instruct Cloudflare Tunnel to route the 192.168.1.0/24 subnet
+# 1. Add your local network route to your permanent tunnel:
 C:\cloudflared\cloudflared.exe tunnel route ip add 192.168.1.0/24 5d585308-fb32-48a1-b0c5-13f3b4a478b5
-```
 
-### 5.2 Verify the Active Route:
-```powershell
+# 2. Verify the route is registered:
 C:\cloudflared\cloudflared.exe tunnel route ip show
 ```
 
-Expected Output:
+#### 🔍 Expected Output:
 ```text
 NETWORK          TUNNEL ID                              CREATED AT
 192.168.1.0/24   5d585308-fb32-48a1-b0c5-13f3b4a478b5   2026-08-27...
 ```
+* 🟢 **Result:** That's it for the server! Your server is now broadcasting its private network (`192.168.1.0/24`) to Cloudflare Edge!
 
-* 🟢 **Result:** Cloudflare Edge now officially routes packets destined for `192.168.1.x` directly down into your server VM!
+---
+
+### ☁️ Part 2: On Cloudflare Zero Trust Dashboard (Web Browser)
+
+Open your browser on your physical laptop and go to:  
+👉 **[one.dash.cloudflare.com](https://one.dash.cloudflare.com/)** *(Sign in with your Cloudflare account)*
+
+#### 1. Check Your Tunnel:
+1. In the left menu, click **Networks** ──► **Tunnels**.
+2. Click on **`pro-win-tunnel`**.
+3. Under the **Private Network** tab, you will see:  
+   👉 **`192.168.1.0/24`** with status **Healthy 🟢**!
+
+#### 2. Configure Split Tunnels (Crucial Step ⚠️):
+By default, Cloudflare WARP ignores local IPs like `192.168.x.x`. We need to tell WARP to route `192.168.1.0/24` into the tunnel!
+1. Go to **Settings** (gear icon at bottom left) ──► **WARP Client**.
+2. Under **Profile settings**, click **Default** ──► scroll down to **Split Tunnels**.
+3. You will see a list of IP ranges that are excluded.
+4. Find **`192.168.0.0/16`** ──► click the **trash can / Delete 🗑️** icon next to it!
+5. Click **Save**!  
+   *(Now, any request to `192.168.1.10` will fly directly into your tunnel!)*
+
+#### 3. Add Device Enrollment Rule (Allow your email to connect):
+1. Still in **Settings** ──► **WARP Client**.
+2. Under **Device enrollment**, click **Manage** ──► click **Rules** tab.
+3. Click **Add a rule**:
+   * **Rule name:** `Allow-My-Devices`
+   * **Rule action:** `Allow`
+   * **Selector:** `Emails`
+   * **Value:** Type your email: `pengseangsim210@gmail.com`
+4. Click **Save**!
 
 ---
 
 ## Phase 6: Remote Client Setup & Testing (Outside Coffee Shop / 4G)
 
-Execute this from your **physical laptop, phone, or remote machine outside your home**:
+Now, on any computer or smartphone outside your home (or connected to 4G mobile data):
 
-### 6.1 Install & Connect Cloudflare WARP (The Underlay Bridge)
-1. Download and install **Cloudflare WARP** (1.1.1.1 app) from [1.1.1.1](https://1.1.1.1/).
-2. Open the WARP app ──► click the **Gear icon** ──► **Account** ──► **Login with Cloudflare Zero Trust**.
-3. Enter your team organization name.
-4. Flip the big switch to **Connected** 🟢!
+### 📱 Part 3: On the Remote Laptop / Phone (The Client)
 
-### 6.2 Test Underlay Network Reachability
-Open Command Prompt / Terminal on the remote machine:
+#### 1. Download WARP:
+Download the free **Cloudflare WARP (1.1.1.1)** app from **[1.1.1.1](https://1.1.1.1/)** (available for Windows, Mac, iOS, Android).
+
+#### 2. Connect to Your Team:
+1. Open the **1.1.1.1** app.
+2. Click the **Gear icon (Settings)** ──► **Preferences** (or **Account**).
+3. Click **Login with Cloudflare Zero Trust**.
+4. Type your Cloudflare team name (shown in your dashboard URL, e.g. `seang-lab`).
+5. Enter your email: `pengseangsim210@gmail.com`.
+6. Cloudflare will email you a **6-digit PIN code** ──► type it in!
+7. Flip the big switch to **Connected 🟢**!
+
+---
+
+### 🧪 The Big Test (Outside Your Home!):
+
+#### 🧪 Test 1: Ping Your Server Across Ezecom CGNAT!
+Open Command Prompt on that outside laptop and run:
 
 ```cmd
 ping 192.168.1.10
@@ -254,13 +298,22 @@ ping 192.168.1.10
 
 * 🟢 **Expected Output:**
   ```text
-  Reply from 192.168.1.10: bytes=32 time=28ms TTL=128
+  Reply from 192.168.1.10: bytes=32 time=35ms TTL=128
   ```
-  *(Congratulations! You just pinged your home server across Ezecom CGNAT from the outside world!)*
+  *(BOOM! You just pinged your home server across Ezecom CGNAT from the outside world!)*
 
 ---
 
-### 6.3 Connect to the Windows Server VPN (The Identity Overlay)
+#### 🧪 Test 2: Connect via Remote Desktop (RDP)
+1. Open **Remote Desktop Connection** (`mstsc`).
+2. **Computer:** `192.168.1.10`
+3. **User:** `E6\s.pengseang`  
+4. **Password:** `abc@123`
+5. 🖥️ **Result:** Your server desktop opens from anywhere in the world across Ezecom CGNAT!
+
+---
+
+### 6.3 Connect to the Windows Server RRAS VPN (The Identity Overlay)
 Now establish the official Windows Server RRAS connection:
 
 1. Click **Start** ──► **Settings** ──► **Network & Internet** ──► **VPN**.
