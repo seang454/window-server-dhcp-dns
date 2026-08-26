@@ -410,6 +410,33 @@ In Windows systems engineering, every scheduled task consists of **3 Core Buildi
 
 ---
 
+#### 💾 Deep-Dive: Is This Script Stored Permanently in Windows?
+
+> [!NOTE]
+> **YES! 100% PERMANENT!**  
+> Running `Register-ScheduledTask` does **NOT** store temporary state in RAM. It permanently writes configuration files to your hard drive and registers entries into the Windows Registry!
+
+##### 1. Where is it Physically Stored?
+* **On the Hard Disk (XML Blueprint):** `C:\Windows\System32\Tasks\CloudflareTunnel247`
+* **In the Windows Registry:** `HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tasks\`
+* **In the Windows GUI:** Press `Win + R` ──► type `taskschd.msc` ──► click **Task Scheduler Library** ──► you will see **`CloudflareTunnel247`** with `Status: Running`, `Triggers: At system startup`, and `User: SYSTEM`!
+
+##### 2. How it Behaves Across Common Scenarios:
+
+| Scenario | What Happens to Your 24/7 Tunnel? |
+|:---|:---|
+| **You close the PowerShell window** | 🟢 **Stays 100% Running!** (The task is completely decoupled from PowerShell). |
+| **You log off / Sign out of Administrator** | 🟢 **Stays 100% Running!** (It runs under `SYSTEM`, not the Administrator profile). |
+| **You restart the VM (`shutdown /r /t 0`)** | 🟢 **Starts automatically on boot** before any user types a password! |
+| **You turn off your laptop and boot it next week** | 🟢 **Starts automatically as soon as the VM powers on!** |
+
+##### 3. How to Remove the Task (If ever needed in the future):
+```powershell
+Unregister-ScheduledTask -TaskName "CloudflareTunnel247" -Confirm:$false
+```
+
+---
+
 ### 6.3 How to Manually Edit, Validate, and Update `config.yml` Anytime
 
 When you want to edit your website routing, add new subdomains (e.g. `api.seang.shop`), or change ports, follow this 3-step workflow:
