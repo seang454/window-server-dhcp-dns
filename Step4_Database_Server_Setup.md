@@ -314,7 +314,124 @@ To master Oracle Database before setup, concepts are categorized into 5 Core Cat
     SELECT tablespace_name, file_name, bytes/1024/1024 AS size_mb FROM dba_data_files;
     ```
 
-### 🛠️ How Databases, Users, Roles, and Tablespaces Are Created (SQL Syntax & Purpose)
+### 🧪 4-Connection SQL Role & Permission Verification Suite
+
+To prove how roles and usernames enforce security, execute the corresponding SQL test script in each of your 4 DBeaver connections:
+
+```
+                      4-CONNECTION SECURITY TEST ARCHITECTURE
+                      
+  ┌────────────────────────────────────────┬────────────────────────────────────────┐
+  │ 1. ORCL (SYS as SYSDBA) 👑              │ 2. ORCL 2 (SYS as SYSOPER) ⚙️           │
+  │    Full Root Control + Full Data Access│    Server Control ONLY (No Data Access) │
+  ├────────────────────────────────────────┼────────────────────────────────────────┤
+  │ 3. orclpdb.e6.local (SYSTEM Normal) 🛡️ │ 4. orclpdb.e6.local 2 (PDBADMIN Normal)│
+  │    Global DBA on PDB Schemas & Tables  │    Local PDB Admin (No Root Access)    │
+  └────────────────────────────────────────┴────────────────────────────────────────┘
+```
+
+---
+
+#### 🧪 Test 1: Open SQL Script in Connection 1 (`ORCL` - `SYS` as `SYSDBA`) 👑
+Right-click **`ORCL`** → select **SQL Editor → Open SQL Script**, paste and run:
+
+```sql
+-- 1. Check Root Container Session
+SELECT SYS_CONTEXT('USERENV', 'SESSION_USER') AS current_user,
+       SYS_CONTEXT('USERENV', 'CON_NAME') AS current_container
+FROM dual;
+-- Expected Result: SYS | CDB$ROOT
+
+-- 2. Query Pluggable Databases
+SHOW PDBS;
+
+-- 3. Query User Data in PDB (Root can read everything!)
+SELECT * FROM hr.employees WHERE ROWNUM <= 3;
+```
+* 🟢 **Result:** **100% Success!** `SYSDBA` has full kernel root control and can read all user data.
+
+---
+
+#### 🧪 Test 2: Open SQL Script in Connection 2 (`ORCL 2` - `SYS` as `SYSOPER`) ⚙️
+Right-click **`ORCL 2`** → select **SQL Editor → Open SQL Script**, paste and run:
+
+```sql
+-- 1. Check Session User & Role
+SELECT SYS_CONTEXT('USERENV', 'SESSION_USER') AS current_user,
+       SYS_CONTEXT('USERENV', 'CON_NAME') AS current_container
+FROM dual;
+-- Expected Result: PUBLIC / SYS | CDB$ROOT
+
+-- 2. Check Instance Status (SYSOPER can monitor instance)
+SELECT instance_name, status FROM v$instance;
+
+-- 3. Attempt to Read Confidential User Data (Privacy Test!)
+SELECT * FROM hr.employees;
+```
+* 🔴 **Expected Result for Query 3:**  
+  **`ORA-01031: insufficient privileges`**  
+  *🏆 Proves 100% that `SYSOPER` is strictly blocked from reading private user data!*
+
+---
+
+#### 🧪 Test 3: Open SQL Script in Connection 3 (`orclpdb.e6.local` - `SYSTEM` as `Normal`) 🛡️
+Right-click **`orclpdb.e6.local`** → select **SQL Editor → Open SQL Script**, paste and run:
+
+```sql
+-- 1. Check Session & Container Context
+SELECT SYS_CONTEXT('USERENV', 'SESSION_USER') AS current_user,
+       SYS_CONTEXT('USERENV', 'CON_NAME') AS current_container
+FROM dual;
+-- Expected Result: SYSTEM | ORCLPDB
+
+-- 2. Create a Test Table as DBA
+CREATE TABLE system_test_log (
+    log_id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    created_by VARCHAR2(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO system_test_log (created_by) VALUES ('SYSTEM_DBA');
+COMMIT;
+
+SELECT * FROM system_test_log;
+```
+* 🟢 **Result:** **100% Success!** `SYSTEM` has full administrative power inside `ORCLPDB`.
+
+---
+
+#### 🧪 Test 4: Open SQL Script in Connection 4 (`orclpdb.e6.local 2` - `PDBADMIN` as `Normal`) 👤
+Right-click **`orclpdb.e6.local 2`** → select **SQL Editor → Open SQL Script**, paste and run:
+
+```sql
+-- 1. Check Session Context
+SELECT SYS_CONTEXT('USERENV', 'SESSION_USER') AS current_user,
+       SYS_CONTEXT('USERENV', 'CON_NAME') AS current_container
+FROM dual;
+-- Expected Result: PDBADMIN | ORCLPDB
+
+-- 2. Create a Local Table
+CREATE TABLE pdbadmin_app_config (
+    config_key VARCHAR2(50) PRIMARY KEY,
+    config_val VARCHAR2(100)
+);
+
+INSERT INTO pdbadmin_app_config VALUES ('APP_NAME', 'Portfolio_PDB_App');
+COMMIT;
+
+SELECT * FROM pdbadmin_app_config;
+
+-- 3. Attempt Root Container Query (Boundary Test!)
+SELECT * FROM v$containers;
+```
+* 🟢 **Queries 1 & 2:** **100% Success!** `PDBADMIN` manages `ORCLPDB` local tables.
+* 🔴 **Expected Result for Query 3:**  
+  **`ORA-00942: table or view does not exist`**  
+  *🏆 Proves 100% that `PDBADMIN` cannot see root container metadata outside `ORCLPDB`!*
+
+---
+
+## 🛠️ How Databases, Users, Roles, and Tablespaces Are Created (SQL Syntax & Purpose)
 
 ---
 
