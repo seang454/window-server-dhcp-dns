@@ -92,6 +92,23 @@ This architecture allows remote users (sitting at a coffee shop or anywhere in t
 
 ## Phase 1: Install Server Roles in Server Manager (VPN & RADIUS)
 
+> [!IMPORTANT]
+> 🧭 **The Simple Name Translation Map:**  
+> Microsoft uses formal technical names in Server Manager rather than casual names. Here is what to look for:
+> 
+> | What YOU Call It 🗣️ | What MICROSOFT Calls It in Server Manager 🖥️ |
+> |:---|:---|
+> | **VPN Server** | 👉 **`Remote Access`** |
+> | **RADIUS Server** | 👉 **`Network Policy and Access Services`** |
+> 
+> 📋 **Quick Visual Checklist (Only 2 Roles!):**
+> ```text
+>   [✓] Network Policy and Access Services  ──► (RADIUS Server)
+>   [✓] Remote Access                       ──► (VPN Server)
+>        ├── [✓] DirectAccess and VPN (RAS)
+>        └── [✓] Routing
+> ```
+
 On **`pro-win-server`** (`192.168.1.10`):
 
 ### 1.1 Open Add Roles and Features Wizard:
