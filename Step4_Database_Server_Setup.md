@@ -81,9 +81,34 @@ Where does each user account live inside Oracle Database 19c?
    * **`SYSTEM`:** Visible inside `ORCLPDB` via **inheritance** from the Root Container (`CDB$ROOT`).
    * **`PDBADMIN`**, **`HR`**, **`portfolio_user`:** Live **100% locally** inside `ORCLPDB` data dictionary space.
 
-#### 💡 What happens if you create a 2nd Pluggable Database (e.g. `FINANCE_PDB`)?
-* 🛡️ **`SYSTEM`:** Will **automatically appear** in `FINANCE_PDB` as well! *(Because `SYSTEM` is a global common user defined at the root container level across the whole server)*.
-* 👤 **`PDBADMIN`:** Will **NOT exist** in `FINANCE_PDB`! *(Because `PDBADMIN` belongs 100% strictly to `ORCLPDB`)*.
+#### 💡 Deep-Dive: What happens when you create a 2nd Pluggable Database (e.g. `FINANCE_PDB`)?
+
+In an enterprise environment, a single server host can run multiple pluggable databases for different departments (`ORCLPDB`, `FINANCE_PDB`, `HRPDB`):
+
+```
+                        MULTI-PDB SERVER ARCHITECTURE
+                        
+  ========================================================================================
+  │ 🏢 CONTAINER DATABASE (CDB$ROOT - SID: orcl)                                         │
+  │                                                                                      │
+  │  🛡️ SYSTEM (Common User) ──► Automatically exists across ALL PDBs server-wide       │
+  ================================───────┬────────────────────────────────────────────────
+                                         │
+                 ┌───────────────────────┴───────────────────────┐
+                 │                                               │
+  ===============▼================               ================▼========================
+  │ 📁 ORCLPDB (Service: orclpdb) │               │ 📁 FINANCE_PDB (Service: finance_pdb) │
+  │                              │               │                                       │
+  │  ├── SYSTEM   (Inherited)    │               │  ├── SYSTEM         (Inherited)       │
+  │  ├── PDBADMIN (Local Only)   │               │  ├── FINANCE_ADMIN  (Local Only)      │
+  │  └── portfolio_user (Local)  │               │  └── accounting_user (Local Only)     │
+  ================================               =========================================
+```
+
+| Account Type | Account Name | Behavior in `FINANCE_PDB` | What it is used for | When should you use it? |
+|:---|:---|:---|:---|:---|
+| 🛡️ **Common / Global User** | `SYSTEM` | **Automatically appears** in `FINANCE_PDB` via inheritance. | Server-wide administration, global backups, and cross-PDB monitoring. | Use when you are the **Lead DBA** managing all corporate databases on the host. |
+| 👤 **Local PDB Admin** | `PDBADMIN` (or `FINANCE_ADMIN`) | **Does NOT exist** in `FINANCE_PDB`. *(You create `FINANCE_ADMIN` for `FINANCE_PDB`)*. | Departmental database administration isolated strictly within 1 PDB. | Use when delegating administration of `FINANCE_PDB` to the Finance IT team or external vendors. |
 
 ---
 
