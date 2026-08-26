@@ -201,6 +201,11 @@ To ensure Active Directory lets NPS make the access decision:
 
 ## 🧪 Comprehensive Client Testing Suite (from `pro-win-client`)
 
+> [!TIP]
+> 🎯 **System Engineering Golden Rule:** *Always test locally inside VMware first before exposing any server to the public Internet!*  
+> Testing locally between `pro-win-client` (`192.168.1.100`) and `pro-win-server` (`192.168.1.10`) bypasses router port-forwarding headaches, ISP CGNAT restrictions, and external security risks while **100% proving** that the RRAS tunnel engine, RADIUS NPS authentication, Active Directory user policies, and virtual IP address leasing work flawlessly!  
+> *(For the complete deep-dive on the 4 public testing obstacles and ISP CGNAT, see Section 10 of [`Step6_VPN_RADIUS_Deep_Dive_Concepts.md`](Step6_VPN_RADIUS_Deep_Dive_Concepts.md)).*
+
 Execute these verification tests from **`pro-win-client` (`192.168.1.100`)**:
 
 ### 🧪 Test 1: Create the VPN Connection on Client

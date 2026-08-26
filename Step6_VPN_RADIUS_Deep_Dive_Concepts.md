@@ -18,6 +18,7 @@
 7. [How Each One Works Internally (Deep Technical Breakdown)](#7-how-each-one-works-internally-deep-technical-breakdown)
 8. [How VPN and RADIUS Work Together (Combined Flow)](#8-how-vpn-and-radius-work-together-combined-flow)
 9. [Full Abbreviation & Terminology Glossary](#9-full-abbreviation--terminology-glossary)
+10. [Can We Test VPN Publicly from the Internet? (The 4 Obstacles & The Golden Rule)](#10-can-we-test-vpn-publicly-from-the-internet-the-4-obstacles--the-golden-rule)
 
 ---
 
@@ -524,3 +525,71 @@ Here is the **complete end-to-end flow** when user `s.pengseang` connects from h
 | **802.1X** | IEEE 802.1X Port-Based Network Access Control | Standard for authenticating wired/wireless devices via RADIUS. |
 | **RFC 2865** | RADIUS Protocol Specification | The original IETF standard defining the RADIUS protocol. |
 | **RFC 2866** | RADIUS Accounting Specification | The IETF standard defining RADIUS accounting logging. |
+
+---
+
+## 10. Can We Test VPN Publicly from the Internet? (The 4 Obstacles & The Golden Rule)
+
+### ❓ The Big Question:
+> *"Can I make my home Windows Server VPN accessible from anywhere in the world across the public Internet, and test it from a coffee shop or another computer?"*
+
+**The Answer:** **YES, you CAN! It is not impossible!**  
+However, in home and university lab environments, there are **4 major technical obstacles** that explain why engineers **always test locally first**:
+
+```text
+                  THE 4 OBSTACLES TO PUBLIC TESTING
+                  
+  👤 Friend at Coffee Shop                     🏠 Your Home (Huawei Router)
+  (Tries to connect to: 192.168.1.10)          (IP: 192.168.1.10 is HIDDEN inside!)
+            │                                             │
+            ▼                                             ▼
+  ❌ "Network Unreachable!"                     Your Router Firewall:
+  (The Internet does not know                   "I block all incoming strangers!"
+   what 192.168.1.10 is!)
+```
+
+---
+
+### 🚫 The 4 Critical Obstacles:
+
+#### 1. 🌐 Private IP vs. Public IP (`192.168.1.10` is Invisible!)
+* Your server IP `192.168.1.10` is a **Private Local IP** (RFC 1918).
+* Private IPs **do NOT exist on the public Internet**! Core routers across the global Internet immediately drop any packets addressed to `192.168.x.x` or `10.x.x.x`.
+* If a friend at a coffee shop tries to connect to `192.168.1.10`, their laptop searches inside *their own* coffee shop local Wi-Fi, not your home!
+
+#### 2. 🛡️ The Huawei Router Firewall Blocks All Inbound Strangers
+* Your Huawei HG8545M fiber router has a built-in stateful firewall.
+* By default, it **blocks 100% of unsolicited incoming connections** from the Internet to prevent attacks on your home devices.
+* To allow outside traffic in, you must log into the router (`http://192.168.1.1`), find **Port Forwarding / Port Mapping**, and manually forward:
+  * Port `1723` (PPTP) or Port `443` (SSTP)
+  * Pointing to your server's local IP (`192.168.1.10`).
+
+#### 3. 🏢 ISP CGNAT (Carrier-Grade NAT — The Biggest Hurdle in Asia)
+* Most residential Internet providers in Cambodia and Southeast Asia (Smart, Metfone, Ezecom, SINET) **do not give you a dedicated public IPv4 address**.
+* Instead, they share **ONE single public IP among 50 to 100 different households** (using the `100.64.0.0/10` CGNAT subnet).
+* Because 100 houses share the same IP, when an incoming connection hits the ISP router, the ISP does not know which home to route it to, so it **drops the connection entirely**! Port forwarding on your Huawei router will not work if the ISP uses CGNAT!
+
+#### 4. 🤖 Automated Hacker Bots & Port Scanners
+* As soon as an enterprise port (like RDP `3389` or PPTP `1723`) is opened directly to the public Internet, automated bot scanners (from Shodan, Censys, botnets) discover it within 15 minutes.
+* These bots immediately hammer the server with brute-force password guessing attacks 24/7, consuming server CPU and locking user accounts.
+
+---
+
+### 🎯 The Golden Rule of System Engineering:
+
+> 🛡️ **"Always test locally FIRST. Expose to the public SECOND."**
+
+#### Why is this rule mandatory in enterprise IT?
+If you try to test publicly from day 1 and the connection fails, you are blind to the root cause:
+* ❓ *Did the Windows Server RRAS service fail?*
+* ❓ *Did the RADIUS NPS policy reject the user?*
+* ❓ *Did the user credentials or dial-in permissions fail?*
+* ❓ *Did the Huawei router drop the packet?*
+* ❓ *Did the ISP block the port via CGNAT?*
+* ❓ *Did Windows Defender Firewall on the host block it?*
+
+#### The Professional Engineering Workflow:
+1. **Phase A (Local Verification):** Connect from `pro-win-client` (`192.168.1.100`) to `pro-win-server` (`192.168.1.10`) inside VMware.  
+   👉 **This PROVES 100% that RRAS, RADIUS, Active Directory, and IP address leasing work with zero doubts!**
+2. **Phase B (Public Deployment):** Once the server is certified working, you can safely expose it publicly using **Cloudflare Tunnel** or **Router Port Forwarding** without guessing where a bug might be!
+
