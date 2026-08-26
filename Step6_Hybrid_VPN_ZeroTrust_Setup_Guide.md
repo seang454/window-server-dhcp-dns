@@ -515,6 +515,65 @@ By default, Cloudflare WARP ignores local IPs like `192.168.x.x`. We need to tel
 
 ## Phase 7: Remote Client Setup & Testing (Outside Coffee Shop / 4G)
 
+### ☕ The Starbucks Dilemma: What Happens Without WARP?
+
+Imagine you are sitting at Brown Coffee or Starbucks on your laptop, connected to their Wi-Fi:
+
+If you open Command Prompt and type:
+```cmd
+ping 192.168.1.10
+```
+
+#### 💥 What happens?
+1. The coffee shop Wi-Fi router looks at `192.168.1.10` and thinks:  
+   👉 *"Hey, `192.168.x.x` is a private home IP! I will look around this coffee shop for it."*
+2. It obviously cannot find your home server in the coffee shop!
+3. And the public Internet **strictly forbids routing private IPs (`192.168.x.x`) across the world**!
+4. Plus, your home server has **NO public IP** (blocked by Ezecom CGNAT) and **NO open router ports**!
+
+**Result:** Connection 100% FAILS! ❌
+
+---
+
+### 🌀 What Cloudflare WARP Actually Does (The "Portal Gun"):
+
+Think of Cloudflare like a **Sci-Fi Portal Gun**:
+
+```text
+  ☕ LAPTOP AT COFFEE SHOP                          🏠 HOME SERVER IN PHNOM PENH
+  ┌─────────────────────────┐                       ┌─────────────────────────┐
+  │ Cloudflare WARP App     │                       │ cloudflared.exe Service │
+  │ (Portal Entrance 🌀)    │                       │ (Portal Exit 🌀)        │
+  └────────────┬────────────┘                       └────────────┬────────────┘
+               │                                                 │
+               ▼                                                 ▼
+  ═════════════════════════════════════════════════════════════════════════════
+                       ☁️ CLOUDFLARE ZERO TRUST GLOBAL EDGE
+  ═════════════════════════════════════════════════════════════════════════════
+```
+
+#### When you install WARP and click "Connected":
+1. **WARP intercepts `192.168.1.10`:** Instead of letting the coffee shop router drop the packet, WARP grabs it!
+2. **WARP flies the packet to Cloudflare Edge:** It wraps the packet in an encrypted WireGuard tunnel and sends it to Cloudflare.
+3. **Cloudflare delivers it through your server's tunnel:** Cloudflare shoots the packet down `pro-win-tunnel` (which is already connected 24/7) right into `192.168.1.10`!
+
+---
+
+### 📊 Summary: When do you need WARP vs When do you NOT?
+
+| What You Want to Access | Do You Need WARP on Client? | Why? |
+|:---|:---:|:---|
+| **Public Website** (`portfolio.seang.shop`) | ❌ **NO WARP NEEDED** | Standard web browsers (Chrome/Safari) already know how to resolve public domain names over HTTP/HTTPS. |
+| **Private IP Services** (`192.168.1.10`, Windows RRAS VPN, RDP, File Shares) | ✅ **WARP IS MANDATORY** | Private IPs (`192.168.x.x`) cannot travel across the public Internet. WARP creates the secure bridge between your outside laptop and Cloudflare! |
+
+> [!NOTE]
+> 💡 **The Big Takeaway:**  
+> • `cloudflared.exe` on the server is the **Tunnel Exit Door**.  
+> • `Cloudflare WARP` on the laptop is the **Tunnel Entrance Door**.  
+> Without WARP, your remote laptop has no way of reaching a private `192.168.1.x` address across Ezecom CGNAT!
+
+---
+
 Now, on any computer or smartphone outside your home (or connected to 4G mobile data):
 
 ### 📱 Part 3: On the Remote Laptop / Phone (The Client)
