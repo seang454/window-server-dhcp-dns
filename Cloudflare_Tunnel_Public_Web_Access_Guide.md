@@ -316,6 +316,42 @@ ingress:
 
 ---
 
+#### ❓ Deep-Dive: Why Did We Copy Files from `C:\Users\Administrator\.cloudflared\` to `C:\cloudflared\`?
+
+> [!IMPORTANT]
+> 🔐 **The Golden Rule of Windows System Administration:**  
+> *"A background 24/7 service must NEVER depend on files trapped inside an individual user's personal profile folder!"*
+
+##### 1. Where did Cloudflare put the files originally?
+When you ran `tunnel login` and `tunnel create`, Cloudflare placed your secret files in your personal user profile folder:
+📁 `C:\Users\Administrator\.cloudflared\`
+* `cert.pem`
+* `5d585308-fb32-48a1-b0c5-13f3b4a478b5.json`
+
+##### 2. The Danger of Leaving Them in `C:\Users\Administrator\` ⚠️:
+Our 24/7 background task is executed by **`NT AUTHORITY\SYSTEM`** (the Windows Operating System itself) so that it runs before anyone logs in. Leaving the files inside `C:\Users\Administrator\` causes 3 severe problems:
+* **User Profile Unloading:** When you click *Sign Out* or switch users, Windows can unload and lock the `C:\Users\Administrator\` profile, cutting off the background service!
+* **Permission Conflicts:** Windows security policies often block background system accounts from reading private files inside individual personal user directories.
+* **Scattered Files:** Your program was in `C:\cloudflared\`, but its secret keys were hidden in `C:\Users\Administrator\.cloudflared\`. If someone moves or cleans up the Administrator folder, the tunnel breaks!
+
+##### 3. The Solution: A Self-Contained "All-in-One" Folder 📦:
+By copying everything into `C:\cloudflared\`, the entire Cloudflare Tunnel becomes **100% self-contained in one clean directory**:
+
+```text
+  📁 C:\cloudflared\
+  ├── ⚙️ cloudflared.exe                                  (The Program)
+  ├── 📄 config.yml                                       (The Routing Rules)
+  ├── 🔑 5d585308-fb32-48a1-b0c5-13f3b4a478b5.json       (The Secret Key)
+  └── 📜 cert.pem                                         (The Certificate)
+```
+
+**Benefits:**
+* **The `SYSTEM` account** has 100% full, permanent access to `C:\cloudflared\`.
+* **Zero permission issues:** Works whether Administrator is logged in, logged off, or the machine just rebooted.
+* **Easy Backups:** If you ever want to backup your tunnel, you just copy **one single folder**: `C:\cloudflared\`!
+
+---
+
 ### 6.2 Register the 24/7 Task via Windows Task Scheduler
 
 > [!NOTE]
