@@ -354,10 +354,53 @@ In enterprise Active Directory environments, administrators **never** assign per
 
 #### 🛡️ Step 2B: Allow `Remote Desktop Users` in Domain Controller GPO User Rights Assignment
 
-##### ❓ Why is Step 2B Strictly Required on a Domain Controller?
-On a standard Windows member server, Step 2A is enough. **HOWEVER**, because `pro-win-server` is an **Active Directory Domain Controller**, Microsoft enforces an additional security lock:
-> ⚠️ On a Domain Controller, the security policy **"Allow log on through Remote Desktop Services"** by default **ONLY grants access to `Administrators`**! If this step is skipped, users receive:  
-> *"To sign in remotely, you need the right to sign in through Remote Desktop Services..."*
+##### ❓ Deep-Dive: Domain Controller vs. Standard Member Server RDP Behavior
+
+Why does adding a user to `Remote Desktop Users` work immediately on a member server, but get **100% blocked on a Domain Controller**?
+
+```
+                RDP SECURITY ARCHITECTURE: MEMBER SERVER VS. DOMAIN CONTROLLER
+                
+  ┌─────────────────────────────────────────────────┬─────────────────────────────────────────────────┐
+  │ 🖥️ STANDARD MEMBER SERVER (File/Web/App Server)  │ 👑 ACTIVE DIRECTORY DOMAIN CONTROLLER (DC)     │
+  ├─────────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+  │ Local Security Policy (`secpol.msc`):           │ GPO Security Policy (`Default DC Policy`):      │
+  │ "Allow log on through Remote Desktop Services": │ "Allow log on through Remote Desktop Services": │
+  │   • Administrators                              │   • Administrators ONLY                         │
+  │   • Remote Desktop Users (Included by Default!) │   (Remote Desktop Users is STRIPPED by default!)│
+  │                                                 │                                                 │
+  │ 👉 Result: Adding s.pengseang to               │ 👉 Result: Adding s.pengseang (or anyone) to    │
+  │    Remote Desktop Users works immediately       │    Remote Desktop Users is BLOCKED 100%!        │
+  │    with ZERO GPO changes!                       │    (Throws: "To sign in remotely...")           │
+  └─────────────────────────────────────────────────┴─────────────────────────────────────────────────┘
+```
+
+###### 🔐 Why Microsoft Locks Down the Domain Controller:
+In Windows Server security architecture, a Domain Controller is the **crown jewel** of the enterprise network:
+1. **Contains `ntds.dit`:** The Active Directory database holding every password hash, Kerberos key, and security descriptor for the entire company.
+2. **Hosts Kerberos KDC & LSASS:** Runs the core authentication authority for all corporate workstations.
+3. **Interactive Logon Threat:** If standard users had interactive desktop sessions on a DC, local privilege escalation vulnerabilities (e.g. PrintNightmare, token stealing) could compromise the entire domain!
+4. **The Security Rule:** Therefore, Microsoft intentionally **removes non-admin groups** from the Domain Controller's interactive login policies by default. Even if you add `s.pengseang`, `s.pengsorng`, or `Domain Users` into `Remote Desktop Users`, the Domain Controller blocks them until you explicitly edit the GPO!
+
+---
+
+##### 🔍 How to Verify: Is the Server a Domain Controller or a Member Server?
+
+| Method | Command / Navigation | What to Look For |
+|:---|:---|:---|
+| **Command Prompt (Fastest ⚡)** | `net accounts` | **`Computer role: PRIMARY`** ──► Domain Controller!<br>**`Computer role: SERVER`** ──► Standard Member Server.<br>**`Computer role: WORKSTATION`** ──► Client PC. |
+| **PowerShell WMI Query** | `(Get-WmiObject Win32_OperatingSystem).ProductType` | `2` = Domain Controller<br>`3` = Member Server<br>`1` = Workstation / Client PC |
+| **Active Directory (`dsa.msc`)** | Check container where computer lives | Inside **`Domain Controllers`** OU ──► DC!<br>Inside **`Computers`** container ──► Member Server / Client. |
+| **Server Manager** | Check installed roles | **`AD DS`** installed ──► Domain Controller! |
+
+##### 🔍 How to Verify: Is the User an Administrator or a Standard User?
+
+| Method | Command / Navigation | What to Look For |
+|:---|:---|:---|
+| **Command Prompt** | `net user s.pengseang /domain` | Look at **`Global Group memberships`**:<br>• Lists `*Domain Users` only ──► 👤 **Standard User** (Needs GPO policy!)<br>• Lists `*Domain Admins` ──► 👑 **Domain Admin** (Allowed everywhere automatically) |
+| **Active Directory (`dsa.msc`)** | Double-click user ──► **Member Of** tab | If `Domain Admins` is NOT present, the user is a standard restricted domain account. |
+
+---
 
 ##### 🛠️ Step-by-Step Configuration in `gpmc.msc`:
 1. On `pro-win-server`, press **`Win + R`** ──► type **`gpmc.msc`** ──► press **Enter**.
