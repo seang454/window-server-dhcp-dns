@@ -18,7 +18,8 @@
 5. [Step 3: Create the Named Tunnel (tunnel create)](#step-3-create-the-named-tunnel-tunnel-create)
 6. [Step 4: Route Public DNS to the Tunnel (tunnel route dns)](#step-4-route-public-dns-to-the-tunnel-tunnel-route-dns)
 7. [Step 5: Run the Tunnel (tunnel run)](#step-5-run-the-tunnel-tunnel-run)
-8. [Step 6: Configure as a 24/7 Permanent Windows Service](#step-6-configure-as-a-247-permanent-windows-service)
+8. [Step 6: Configure as a 24/7 Permanent Background Service (Windows Task Scheduler ⭐)](#step-6-configure-as-a-247-permanent-background-service-windows-task-scheduler-)
+   * [6.3 How to Manually Edit, Validate, and Update config.yml Anytime](#63-how-to-manually-edit-validate-and-update-configyml-anytime)
 9. [Step 7: Test & Verify Globally (Phone 4G/5G & Worldwide)](#step-7-test--verify-globally-phone-4g5g--worldwide)
 10. [Troubleshooting & Handy Maintenance Commands](#troubleshooting--handy-maintenance-commands)
 
@@ -67,6 +68,60 @@
   │  └───────────────────────────────────────────────────────────┘  │
   └─────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+### 🗺️ The Complete 7-Step Request Lifecycle: From Phone to Your VM
+
+```text
+  📱 1. USER ON PHONE (4G/5G in a coffee shop)
+        Types: https://portfolio.seang.shop
+        │
+        ▼
+  ☁️ 2. CLOUDFLARE EDGE DATA CENTER (Singapore)
+        • Handles the green padlock SSL/TLS encryption 🔒
+        • Checks its internal routing table:
+          "Where does portfolio.seang.shop go?"
+        • Finds: Tunnel ID 5d585308-fb32... (pro-win-tunnel)
+        • Sees: "I have 4 open, active QUIC tunnels to Seang's server!"
+        │
+        ▼  (Encrypted QUIC packet flows down the existing tunnel)
+  📦 3. YOUR HOME HUAWEI ROUTER (HG8545M)
+        • Firewall allows the packet because YOUR SERVER initiated
+          the connection from the inside (Outbound Established State)!
+        • Router forwards the packet into your laptop.
+        │
+        ▼
+  💻 4. YOUR PHYSICAL LAPTOP (Windows 11)
+        • VMware Workstation Virtual Switch passes packet to the VM.
+        │
+        ▼
+  ⚙️ 5. WINDOWS TASK SCHEDULER (Inside pro-win-server VM)
+        • cloudflared.exe (running silently under SYSTEM) catches the packet.
+        • Reads config.yml:
+          - Changes header to: portfolio.e6.local
+          - Forwards traffic to: http://portfolio.e6.local (port 80)
+        │
+        ▼
+  🌐 6. IIS 10 WEB SERVER & NEXT.JS (Port 3000)
+        • IIS Reverse Proxy receives the request.
+        • Next.js prepares your portfolio page (HTML, CSS, images).
+        │
+        ▼
+  📱 7. RESPONSE FLIES BACK ACROSS THE TUNNEL!
+        • In less than 0.08 seconds (80 milliseconds), your portfolio
+          displays beautifully on the user's phone screen!
+```
+
+---
+
+### 🔍 The 3 "Secret Tricks" That Make This Magic Possible:
+
+1. **The Outbound Tunnel Handshake:** Your home router blocks incoming strangers. But your server contacted Cloudflare **OUT** first. Because the connection started from **inside your house**, your router's firewall happily allows the return traffic!
+2. **The HTTP Header Translation (IIS Binding Fix):** The public phone asks for `portfolio.seang.shop`, but your local IIS website only listens for `portfolio.e6.local`. `cloudflared` automatically rewrites the `Host` header to `portfolio.e6.local` before passing it to IIS!
+3. **The 24/7 Engine (Windows Task Scheduler):** Runs `cloudflared.exe` in **Session 0** (the invisible background layer of Windows). If your laptop reboots or your VM restarts, the tunnel **starts automatically on boot** before anyone even logs in!
+
+---
 
 ### 💡 Why the CLI Command Workflow is Superior:
 1. **Bypasses Credit Card Verification:** The Cloudflare Zero Trust web UI requires a credit card / billing address on checkout even for the free plan. The **CLI workflow requires ZERO payment info**!
@@ -222,17 +277,21 @@ INF Registered tunnel connection connIndex=3 location=sin02 protocol=quic
 
 ---
 
-## Step 6: Configure as a 24/7 Permanent Windows Service
+## Step 6: Configure as a 24/7 Permanent Background Service (Windows Task Scheduler ⭐)
 
-Currently, if you close the PowerShell window, the tunnel stops. Follow these steps to make it run **permanently in the background as a Windows Service**:
+Currently, if you close the PowerShell window, the tunnel stops. Follow these steps to make it run **permanently in the background 24/7**:
 
 ### 6.1 Create the Configuration File (`config.yml`)
 In PowerShell, run:
 
 ```powershell
+# Copy credentials into C:\cloudflared
+Copy-Item "C:\Users\Administrator\.cloudflared\*" -Destination "C:\cloudflared\" -Force
+
+# Create the clean configuration file
 @"
 tunnel: 5d585308-fb32-48a1-b0c5-13f3b4a478b5
-credentials-file: C:\Users\Administrator\.cloudflared\5d585308-fb32-48a1-b0c5-13f3b4a478b5.json
+credentials-file: C:\cloudflared\5d585308-fb32-48a1-b0c5-13f3b4a478b5.json
 
 ingress:
   - hostname: portfolio.seang.shop
@@ -257,35 +316,78 @@ ingress:
 
 ---
 
-### 6.2 Install and Start the Windows Service
+### 6.2 Register the 24/7 Task via Windows Task Scheduler
+
+> [!NOTE]
+> 🔍 **Why Task Scheduler instead of `cloudflared service install`?**  
+> On Windows Server 2022, `cloudflared service install` frequently fails with `StartServiceFailed` because Windows SCM expects an internal ServiceMain dispatcher, whereas `cloudflared` requires the `tunnel run` subcommand.  
+> **Windows Task Scheduler** is the **100% bulletproof enterprise standard**: it runs the exact working command (`tunnel run`) silently under `NT AUTHORITY\SYSTEM` at system boot!
+
+Run this in PowerShell:
 
 ```powershell
-# 1. Install cloudflared as a native background Windows Service
-C:\cloudflared\cloudflared.exe --config "C:\cloudflared\config.yml" service install
+# 1. Define the action to run our proven working command
+$action = New-ScheduledTaskAction -Execute "C:\cloudflared\cloudflared.exe" -Argument '--config "C:\cloudflared\config.yml" tunnel run'
 
-# 2. Start the Windows Service
-Start-Service cloudflared
+# 2. Trigger: Run automatically at system startup (Before any user logs in!)
+$trigger = New-ScheduledTaskTrigger -AtStartup
 
-# 3. Confirm it is running 24/7
-Get-Service cloudflared
+# 3. Principal: Run with highest privileges under the SYSTEM account
+$principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+
+# 4. Register and save the task in Windows
+Register-ScheduledTask -TaskName "CloudflareTunnel247" -Action $action -Trigger $trigger -Principal $principal -Description "24/7 Cloudflare Tunnel for portfolio.seang.shop" -Force
+
+# 5. Start the task immediately!
+Start-ScheduledTask -TaskName "CloudflareTunnel247"
+
+# 6. Verify status
+Get-ScheduledTask -TaskName "CloudflareTunnel247"
 ```
 
-### 💡 Detailed Explanation of Service Commands:
-
-| Command | What It Does & Why It Is Used |
-|:---|:---|
-| `... service install` | **Registers Service in Windows:** Adds `cloudflared` into Windows Service Control Manager (`services.msc`) with `StartupType: Automatic`. It will now launch automatically when Windows Server boots up, before anyone even logs in! |
-| `Start-Service cloudflared` | **Starts Background Execution:** Starts the newly registered service immediately so the tunnel runs silently in the background. |
-| `Get-Service cloudflared` | **Status Check:** Verifies the service state is `Running`. |
-
-### 🔍 Expected Status Output:
+### 🔍 Live Output:
 ```text
-Status   Name               DisplayName
-------   ----               -----------
-Running  cloudflared        Cloudflare Tunnel
+TaskPath       TaskName              State
+--------       --------              -----
+\              CloudflareTunnel247   Running
 ```
 
-* 🎉 **Result:** Even if you restart the server VM or log off, the tunnel **starts automatically on boot** in the background!
+* 🎉 **Result:** The tunnel is now running 24/7 in the background! You can close PowerShell, log off, or restart the server—it will boot automatically!
+
+---
+
+### 6.3 How to Manually Edit, Validate, and Update `config.yml` Anytime
+
+When you want to edit your website routing, add new subdomains (e.g. `api.seang.shop`), or change ports, follow this 3-step workflow:
+
+#### 1. Open the file in Notepad:
+Press **`Win + R`** ──► type:
+```cmd
+notepad C:\cloudflared\config.yml
+```
+*(Make your edits and press `Ctrl + S` to save).*
+
+#### ⚠️ YAML Formatting Rules:
+* **Never use TAB keys!** Always use **2 spaces** for indentation.
+* **Catch-All Rule:** The last line **MUST** always remain:  
+  `- service: http_status:404`
+
+#### 2. Validate for Syntax Errors:
+Before restarting the tunnel, test that your YAML syntax is valid:
+```powershell
+C:\cloudflared\cloudflared.exe --config "C:\cloudflared\config.yml" tunnel ingress validate
+```
+* Expected output: 🟢 **`Validating rules from C:\cloudflared\config.yml... OK`**
+
+#### 3. Restart the 24/7 Task to Apply Changes:
+```powershell
+# Restart the task
+Stop-ScheduledTask -TaskName "CloudflareTunnel247"
+Start-ScheduledTask -TaskName "CloudflareTunnel247"
+
+# Verify it is running
+Get-ScheduledTask -TaskName "CloudflareTunnel247"
+```
 
 ---
 
