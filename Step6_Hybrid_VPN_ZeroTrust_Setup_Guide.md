@@ -319,6 +319,26 @@ Network Policy Server (NPS) acts as the centralized **AAA (Authentication, Autho
 3. **Policy Name:** Type `Allow_VPN_Access`  
    * **Type of network access server:** Select `Remote Access Server (VPN-Dial up)`  
    * Click **Next**.
+
+---
+
+#### 🔍 Deep-Dive: What Does "Type of Network Access Server" (NAS) Mean?
+
+In RADIUS protocol architecture (RFC 2865), a **Network Access Server (NAS)** is the **Gatekeeper Device** that intercepts remote users before they enter the internal network. This dropdown tells NPS which type of gatekeeper this policy applies to:
+
+| Option | What It Is | When Is It Used? | Do We Choose It? |
+|:---|:---|:---|:---:|
+| **1. `Unspecified`** | **Wildcard / Any Gatekeeper** | Used for generic or 3rd-party equipment (Cisco Wi-Fi Access Points, Aruba switches, Fortinet firewalls). Matches *any* incoming RADIUS request. | ❌ No (Too broad; could accidentally affect other services). |
+| **2. `Remote Desktop Gateway`** | **RDP over HTTPS (Step 5)** | Used specifically for **RD Gateway** (Terminal Server from Step 5) to control who can RDP through port 443. | ❌ No (This is for RDP desktop connections, not VPN tunnels). |
+| **3. `Remote Access Server (VPN-Dial up)`** 🏆 | **Microsoft RRAS VPN Server (Step 6)** | Tells NPS to apply this policy **ONLY to incoming VPN connections** (SSTP, PPTP, L2TP) coming from RRAS! | 🏆 **YES! THIS IS THE ONE!** |
+
+##### 🏢 Real-World Analogy:
+* 🚪 **Unspecified:** A generic security rule that applies to any random door on campus.
+* 🖥️ **Remote Desktop Gateway:** The security guard checking badges specifically at the Computer Terminal Room.
+* 🛡️ **Remote Access Server (VPN-Dial up):** The security guard stationed specifically at the Secure Underground Tunnel (VPN)!
+
+---
+
 4. **Specify Conditions:** Click **Add...**:
    * Select **User Groups** ──► click **Add...**.
    * Click **Add Groups...** ──► type:
