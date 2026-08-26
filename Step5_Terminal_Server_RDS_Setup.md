@@ -432,6 +432,33 @@ In Windows Server security architecture, a Domain Controller is the **crown jewe
     gpupdate /force
     ```
 
+##### 🧪 Live Verification: Proving Group Inheritance with `net user`
+
+On `pro-win-server`, run:
+```cmd
+net user s.pengseang /domain
+```
+
+**Actual Live Server Output:**
+```text
+User name                    s.pengseang
+Full Name                    Pengseang Sim
+Account active               Yes
+...
+Global Group memberships     *Domain Users
+The command completed successfully.
+```
+
+**🔍 What This Output Proves:**
+1. **`s.pengseang` is a Standard Domain User:** Notice `Domain Admins` is NOT in the list!
+2. **The 3-Tier Security Inheritance Chain:**
+   ```
+   👤 s.pengseang ────────► belongs to 👥 Domain Users
+   👥 Domain Users ───────► belongs to 🛡️ Remote Desktop Users
+   🛡️ Remote Desktop Users ──► is allowed by our Domain Controller GPO Policy!
+   ```
+3. Because this inheritance chain is 100% complete, `s.pengseang` can now connect to the Terminal Server via RDP while remaining a secure, restricted standard user!
+
 ---
 
 ### Phase 3: Configure Windows Firewall for Remote Desktop (Port 3389)
