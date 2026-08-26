@@ -431,6 +431,47 @@ SELECT * FROM v$containers;
 
 ---
 
+### 👑 Master Capabilities & Permissions Matrix for All User Logins
+
+| Action / SQL Command | 👑 `SYS` (`SYSDBA`) | ⚙️ `SYS` (`SYSOPER`) | 🛡️ `SYSTEM` (`Normal`) | 👤 `PDBADMIN` / `HR` (`Normal`) |
+|:---|:---:|:---:|:---:|:---:|
+| `CREATE DATABASE` / `CREATE PDB` | ✅ **YES** | ❌ **No** | ❌ **No** | ❌ **No** |
+| `STARTUP` & `SHUTDOWN` Instance | ✅ **YES** | ✅ **YES** | ❌ **No** | ❌ **No** |
+| `ALTER DATABASE MOUNT / OPEN` | ✅ **YES** | ✅ **YES** | ❌ **No** | ❌ **No** |
+| `CREATE USER` (Common `c##`) | ✅ **YES** | ❌ **No** | ✅ **YES** | ❌ **No** |
+| `CREATE USER` (Local PDB) | ✅ **YES** | ❌ **No** | ✅ **YES** | ✅ **YES** |
+| `CREATE TABLESPACE` | ✅ **YES** | ❌ **No** | ✅ **YES** | ✅ **YES** (PDB Only) |
+| `CREATE TABLE` / `VIEW` / `INDEX` | ✅ **YES** | ❌ **No** | ✅ **YES** | ✅ **YES** |
+| `INSERT`, `UPDATE`, `DELETE` Data | ✅ **YES** | ❌ **No** | ✅ **YES** | ✅ **YES** |
+| `SELECT` (Read Private User Data) | ✅ **YES** | ❌ **FORBIDDEN** | ✅ **YES** | ✅ **YES** (Own PDB Only) |
+| `DROP TABLE` / `TRUNCATE` | ✅ **YES** | ❌ **No** | ✅ **YES** | ✅ **YES** (Own PDB Only) |
+
+---
+
+#### 🔍 Detailed Breakdown by Login Account:
+
+##### 1. 👑 `SYS` (logged in `AS SYSDBA`)
+* **Scope & Power:** **Absolute Kernel Root Power.** Owns the internal Data Dictionary.
+* **Allowed Actions:** `CREATE DATABASE`, `CREATE PDB`, `STARTUP`, `SHUTDOWN`, `GRANT`, `CREATE USER`, `CREATE TABLE`, `INSERT`, `UPDATE`, `DELETE`, `DROP TABLE`.
+* ⚠️ **Best Practice Warning:** Although `SYS` can run `CREATE TABLE`, **never create application user tables under the `SYS` schema**, as it pollutes the system data dictionary!
+
+##### 2. ⚙️ `SYS` (logged in `AS SYSOPER`)
+* **Scope & Power:** **System Operations Maintenance.**
+* **Allowed Actions:** `STARTUP`, `SHUTDOWN`, `ALTER DATABASE MOUNT/OPEN`, monitor `v$instance`.
+* 🛑 **Forbidden Actions:** **CANNOT read private user data (`SELECT * FROM hr.employees` returns `ORA-01031`)**, cannot create users, cannot create tables.
+
+##### 3. 🛡️ `SYSTEM` (logged in `AS NORMAL` on `orclpdb.e6.local`)
+* **Scope & Power:** **Global Database Administrator.**
+* **Allowed Actions:** Creating database users, granting permissions, creating tablespaces, creating application tables, running `INSERT`, `UPDATE`, `DELETE`, `SELECT`, and `DROP TABLE`.
+* 🛑 **Forbidden Actions:** Cannot run `STARTUP` / `SHUTDOWN` or `CREATE DATABASE` without `SYSDBA` elevation.
+
+##### 4. 👤 `PDBADMIN` / `HR` (logged in `AS NORMAL` on `orclpdb.e6.local`)
+* **Scope & Power:** **Local PDB Application Administration / Schema Owner.**
+* **Allowed Actions:** Creating local PDB tables (`CREATE TABLE`), querying data (`SELECT`), modifying rows (`INSERT`/`UPDATE`/`DELETE`), managing local PDB schemas.
+* 🛑 **Forbidden Actions:** Restricted strictly inside `ORCLPDB`. Cannot access `CDB$ROOT` metadata or manage other pluggable databases (`FINANCE_PDB`).
+
+---
+
 ## 🛠️ How Databases, Users, Roles, and Tablespaces Are Created (SQL Syntax & Purpose)
 
 ---
