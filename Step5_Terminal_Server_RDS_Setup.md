@@ -412,6 +412,58 @@ To prevent disconnected or idle sessions from wasting server RAM and CPU memory,
 
 ---
 
+#### 💡 Deep-Dive: What Do These 3 Policies Do & Why Are They Essential?
+
+```
+                     RDS SESSION LIFECYCLE & POLICY TIMELINE
+                     
+  [ User Logs In ] ──► [ Active Working Session ]
+                              │
+                              ├─► User leaves desk (No mouse/keyboard input for 30m)
+                              │   ▼
+                              │  ⏳ [ Idle Timeout Reached (30m) ] ──► Policy disconnects session
+                              │
+                              └─► User closes RDP window directly (X button) without logging off
+                                  ▼
+                                 🔌 [ Session is Disconnected ]
+                                    (Apps like DBeaver stay open in server RAM)
+                                    │
+                                    ├─► User logs in again within 1 hour ──► Reconnected to existing session!
+                                    │
+                                    └─► 1 hour passes without reconnecting
+                                        ▼
+                                       🛑 [ Disconnected Timeout Reached (1h) ]
+                                          ──► Session is TERMINATED & RAM memory is freed!
+```
+
+---
+
+##### 1. 🔒 Restrict Remote Desktop Services users to a single session
+* **What it does:** Ensures each domain user account (e.g. `s.pengseang`) can have **ONLY ONE** active session on the server at any given time.
+* **Without this policy (The Problem):**  
+  If user `s.pengseang` connects from their office PC, then connects from a laptop in a conference room, and later connects from home, Windows Server creates **3 separate, simultaneous desktop sessions** for that same user! Each session consumes 500MB–1GB of server RAM and locks file handles.
+* **With this policy (The Solution):**  
+  When `s.pengseang` connects from their laptop, the server automatically **reconnects them to their existing running session**, bringing their open windows with them, rather than spinning up a new session!
+
+---
+
+##### 2. 🔌 Set time limit for disconnected sessions (e.g. 1 Hour)
+* **What it does:** Automatically logs off and terminates sessions that have been abandoned or disconnected for more than the specified duration (e.g. 1 hour).
+* **Without this policy (The Problem):**  
+  Most users simply click the **"X" (close)** button on their RDP client window at the end of the workday instead of clicking *Start ──► Sign Out*. The session remains running in the server's RAM forever! Over weeks, 50 abandoned sessions accumulate ("ghost sessions"), eventually exhausting all server memory and crashing the server!
+* **With this policy (The Solution):**  
+  If a user disconnects their network or clicks "X", Windows Server keeps their session alive for 1 hour (in case their Wi-Fi dropped or they just rebooted their laptop). If they don't return within 1 hour, the server gracefully closes the background processes and releases the RAM back to the operating system!
+
+---
+
+##### 3. ⏳ Set time limit for active but idle sessions (e.g. 30 Minutes)
+* **What it does:** Detects when a remote session has had **zero keyboard or mouse interaction** for the specified time limit (e.g. 30 minutes) and changes the session state from `Active` to `Disconnected`.
+* **Security & Resource Benefit:**  
+  * **Physical Security:** If an employee walks away from their client desk to go to lunch without locking their screen, an unauthorized person could access sensitive company databases. After 30 minutes of inactivity, the session locks/disconnects!
+  * **Resource Preservation:** Idle sessions holding database locks or heavy queries are paused so other working employees get full CPU priority.
+
+---
+
 ## 🧪 Comprehensive Verification & Testing Suite
 
 Execute these 3 verification tests to confirm your Terminal Server deployment is 100% operational:
