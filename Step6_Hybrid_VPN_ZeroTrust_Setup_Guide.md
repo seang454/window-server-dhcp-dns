@@ -418,9 +418,16 @@ Active Directory stores the individual dial-in authorization flag on each user a
 4. Double-click user **`s.pengseang`**.
 5. Click on the **Dial-in** tab.
 6. Under **Network Access Permission**, select:  
-   🔘 **Control access through NPS Network Policy**  
-   *(Or select **Allow access**)*.
+   🔘 **Control access through NPS Network Policy**
 7. Click **Apply** ──► click **OK**.
+
+> [!TIP]
+> 🔍 **The Difference: "Control access through NPS" vs. "Allow access"**
+> 
+> | Setting | How It Works | Enterprise Rating |
+> |:---|:---|:---:|
+> | **`Control access through NPS Network Policy`** ⭐ *(Recommended)* | Active Directory tells the server: *"Let our **RADIUS Server (NPS)** make the smart decision based on the `Allow_VPN_Access` rules we just created!"* | 🏆 **Best Practice (Enterprise Standard)** |
+> | **`Allow access`** | Hardcodes access on this single user account, bypassing NPS central policy controls. | ⚠️ **Old-school / Manual** |
 
 ---
 
@@ -448,6 +455,29 @@ NETWORK          TUNNEL ID                              CREATED AT
 192.168.1.0/24   5d585308-fb32-48a1-b0c5-13f3b4a478b5   2026-08-27...
 ```
 * 🟢 **Result:** That's it for the server! Your server is now broadcasting its private network (`192.168.1.0/24`) to Cloudflare Edge!
+
+---
+
+#### 🔍 Deep-Dive: Understanding the `tunnel route ip add` Command
+
+```powershell
+C:\cloudflared\cloudflared.exe tunnel route ip add 192.168.1.0/24 5d585308-fb32-48a1-b0c5-13f3b4a478b5
+└──────────────┬─────────────┘ └───┬──┘ └──┬───┘ └──────┬───────┘ └──────────────────┬─────────────────┘
+               │                   │       │            │                            │
+        1. The Program     2. Subsystem 3. Action   4. IP Subnet              5. Your Tunnel ID
+```
+
+| Parameter | Type | Purpose & Plain English Explanation 🗣️ |
+|:---|:---|:---|
+| **`C:\cloudflared\cloudflared.exe`** | Executable Path | The permanent Cloudflare Tunnel client daemon running on your server. |
+| **`tunnel`** | CLI Subsystem | Specifies that we are managing Cloudflare Tunnel infrastructure. |
+| **`route ip add`** | Action | Publishes a new private network route into Cloudflare's global edge routing table (across 300+ data centers). |
+| **`192.168.1.0/24`** | CIDR Subnet | Encompasses all 254 IP addresses in your LAN (`192.168.1.1` - `192.168.1.254`), including your server (`192.168.1.10`) and VPN pool (`.220 - .240`). |
+| **`5d585308-fb32...`** | UUID | Your permanent tunnel ID (`pro-win-tunnel`), binding the subnet to this specific tunnel. |
+
+##### ⚡ Architectural Impact: Upgrading from Layer 7 (Web) to Layer 3 (IP Routing)
+* **Standard Web Ingress (Layer 7):** Forwards HTTP hostnames (e.g. `portfolio.seang.shop` ──► `localhost:3000`).
+* **Private Network Routing (Layer 3):** Transforms your tunnel into a **virtual router**! When an authorized remote client with Cloudflare WARP attempts to contact `192.168.1.10` or the VPN pool, Cloudflare's global edge intercepts the packet and tunnels it straight to your server over the existing outbound connection, **completely bypassing Ezecom CGNAT and eliminating router port-forwarding**!
 
 ---
 

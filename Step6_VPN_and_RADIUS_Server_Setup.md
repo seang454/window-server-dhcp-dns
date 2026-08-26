@@ -366,8 +366,16 @@ To ensure Active Directory lets NPS make the access decision:
 2. Double-click user **`s.pengseang`**.
 3. Click the **Dial-in** tab.
 4. Under **Network Access Permission**, select:  
-   👉 **"Control access through NPS Network Policy"** *(or "Allow access")*.
+   👉 **"Control access through NPS Network Policy"**.
 5. Click **Apply** ──► click **OK**!
+
+> [!TIP]
+> 🔍 **The Difference: "Control access through NPS" vs. "Allow access"**
+> 
+> | Setting | How It Works | Enterprise Rating |
+> |:---|:---|:---:|
+> | **`Control access through NPS Network Policy`** ⭐ *(Recommended)* | Active Directory tells the server: *"Let our **RADIUS Server (NPS)** make the smart decision based on the `Allow_VPN_Access` rules we just created!"* | 🏆 **Best Practice (Enterprise Standard)** |
+> | **`Allow access`** | Hardcodes access on this single user account, bypassing NPS central policy controls. | ⚠️ **Old-school / Manual** |
 
 ---
 
