@@ -532,13 +532,19 @@ SELECT * FROM v$containers;
 | `CREATE DATABASE` / `CREATE PDB` | ✅ **YES** | ❌ **No** | ❌ **No** | ❌ **No** |
 | `STARTUP` & `SHUTDOWN` Instance | ✅ **YES** | ✅ **YES** | ❌ **No** | ❌ **No** |
 | `ALTER DATABASE MOUNT / OPEN` | ✅ **YES** | ✅ **YES** | ❌ **No** | ❌ **No** |
+| `ALTER SYSTEM` (RAM / SGA / PGA) | ✅ **YES** | ❌ **No** | ❌ **No** | ❌ **No** |
+| `GRANT` / `REVOKE` Privileges | ✅ **YES** (Global) | ❌ **No** | ✅ **YES** (Global) | ✅ **YES** (PDB Only once granted `GRANT OPTION`) |
+| `ALTER USER` / `UNLOCK ACCOUNT` | ✅ **YES** (Global) | ❌ **No** | ✅ **YES** (Global) | ✅ **YES** (Local PDB Users) |
+| `CREATE ROLE` / `GRANT ROLE` | ✅ **YES** (Global) | ❌ **No** | ✅ **YES** (Global) | ✅ **YES** (Local PDB Only) |
 | `CREATE USER` (Common `c##`) | ✅ **YES** | ❌ **No** | ✅ **YES** | ❌ **No** |
 | `CREATE USER` (Local PDB) | ✅ **YES** | ❌ **No** | ✅ **YES** | ✅ **YES** |
 | `CREATE TABLESPACE` | ✅ **YES** | ❌ **No** | ✅ **YES** | ✅ **YES** (PDB Only) |
-| `CREATE TABLE` / `VIEW` / `INDEX` | ✅ **YES** | ❌ **No** | ✅ **YES** | ✅ **YES** |
+| `CREATE TABLE` / `VIEW` / `INDEX` | ✅ **YES** | ❌ **No** | ✅ **YES** | ✅ **YES** (Requires `RESOURCE` / `CREATE TABLE` grant) |
+| `CREATE PROCEDURE` / `TRIGGER` | ✅ **YES** | ❌ **No** | ✅ **YES** | ✅ **YES** (Requires `CREATE PROCEDURE` grant) |
 | `INSERT`, `UPDATE`, `DELETE` Data | ✅ **YES** | ❌ **No** | ✅ **YES** | ✅ **YES** |
 | `SELECT` (Read Private User Data) | ✅ **YES** | ❌ **FORBIDDEN** | ✅ **YES** | ✅ **YES** (Own PDB Only) |
 | `DROP TABLE` / `TRUNCATE` | ✅ **YES** | ❌ **No** | ✅ **YES** | ✅ **YES** (Own PDB Only) |
+| `EXPORT` / `IMPORT` (Data Pump) | ✅ **YES** (Full DB) | ❌ **No** | ✅ **YES** (Full DB) | ✅ **YES** (Own PDB Schemas Only) |
 
 ---
 
