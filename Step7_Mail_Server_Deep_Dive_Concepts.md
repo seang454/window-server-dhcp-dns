@@ -576,6 +576,15 @@ A domain can have multiple mail systems (e.g. hMailServer for staff, and SendGri
 * Staff emails: `s1._domainkey.e6.local`
 * Marketing emails: `marketing._domainkey.e6.local`
 
+> [!NOTE]
+> **💡 Local vs Public Internet: Is DKIM Required for Local Enterprise Testing?**
+> * **For Local Network Labs:** **NO!** When emails move purely within a local subnet (`192.168.1.0/24`):
+>   ```text
+>   Client 1 (192.168.1.100) ──► Switch ──► pro-win-server (192.168.1.10) ──► Client 2 (192.168.1.101)
+>   ```
+>   There are no untrusted intermediate hops. Sender identity is already strictly verified by hMailServer using SMTP Username and Password authentication. Adding DKIM locally is like stamping a royal wax seal on an envelope you hand directly to your roommate across the desk!
+> * **For Public Internet Production:** **YES!** Outside mail services (Google, Microsoft 365, Yahoo) reject or spam incoming mail that lacks a cryptographic DKIM signature because emails traverse multiple third-party routers across the Internet.
+
 ---
 
 ### 6️⃣ DMARC (Domain-based Message Authentication, Reporting & Conformance) — The Sheriff 🤠

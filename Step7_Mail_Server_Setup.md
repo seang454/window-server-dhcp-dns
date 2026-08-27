@@ -332,15 +332,28 @@ In the left tree:
 ### 3.7 (Advanced / Production Optional): DKIM Cryptographic Signing Setup
 
 > [!IMPORTANT]
-> **📌 WHEN DO YOU NEED TO SET THIS UP?**
-> * **For Local Networks & University Labs (Our Current Lab Setup):**  
+> **📌 WHEN DO YOU NEED TO SET THIS UP? (AND WHY IT IS SKIPPED FOR LOCAL NETWORKS)**
+> * **The Short Answer:**  
 >   👉 **LEAVE THIS UNCHECKED / SKIPPED!** You do **NOT** need DKIM to send, receive, or synchronize emails between your Windows 8 client VMs. Everything works 100% with standard Host A, MX, and PTR records!
+>
+> * **🧐 Why DKIM is NOT Needed on a Local Network:**
+>   1. **Where Was DKIM Designed to Work?**  
+>      DKIM was invented for the **wild, untrusted public Internet**, where an email passes through 5 to 10 unknown third-party routers and intermediate relay servers before reaching Google or Yahoo. It attaches a cryptographic signature so receiving servers can verify: *"Did a rogue intermediate router tamper with or modify this email in transit?"*
+>   2. **How YOUR Local Network Works:**  
+>      On your private network:
+>      ```text
+>      Client 1 (192.168.1.100) ──► LAN Switch ──► pro-win-server (192.168.1.10) ──► Client 2 (192.168.1.101)
+>      ```
+>      There are **NO outside servers, NO third-party relays, and NO untrusted intermediate hops**!  
+>      When Client 1 connects to send mail, hMailServer already requires **Username + Password (SMTP Authentication)**. The server already knows with 100% certainty that the sender is legitimate.  
+>      *(💡 Analogy: Adding DKIM on a local network is like putting an official royal wax seal on a handwritten note that you are handing directly to your roommate across the desk!)*
+>
 > * **When is DKIM ACTUALLY Required in the Real World?**  
->   👉 Only in **Public Internet Production** when your server sends outbound emails directly to external providers like **Gmail**, **Microsoft 365**, or **Yahoo**. Modern public mail providers require DKIM signatures to prove that the email was not modified or spoofed in transit.
+>   👉 Only in **Public Internet Production** when your server sends outbound emails directly to external public providers like **Gmail**, **Microsoft 365**, or **Yahoo**. Modern public mail providers mandate DKIM signatures to prove that the email was not modified or spoofed in transit across the Internet.
 >
 > ---
 >
-> **📍 WHERE IS THIS CONFIGURED? (Saved for Future Reference):**
+> **📍 WHERE IS THIS CONFIGURED? (Saved for Future Production Reference):**
 > * **In hMailServer:** Expand `Domains` ──► click `e6.local` ──► click the **`DKIM Signing`** tab.
 > * **In DNS Manager (`dnsmgmt.msc`):** `Forward Lookup Zones` ──► `e6.local` ──► Text (TXT) record named **`s1._domainkey`**.
 > * **The Private Key File:** Saved on server disk at `C:\Program Files (x86)\hMailServer\Data\dkim.private.key`.
