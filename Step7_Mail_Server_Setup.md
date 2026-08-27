@@ -206,22 +206,32 @@ Resolve-DnsName _dmarc.e6.local -Type TXT | Select-Object -ExpandProperty String
 
 **hMailServer** is the premier free, open-source email server for Windows Server, supporting SMTP, POP3, and IMAP.
 
-### 2.1 Download hMailServer:
-On **`pro-win-server`**, open PowerShell as Administrator and run:
+### 2.1 Prerequisite: Enable .NET Framework 3.5 (`Net-Framework-Core`) ⚠️
+The hMailServer Administrator tool relies on the legacy .NET 2.0/3.5 runtime. If this is not installed, the setup wizard will attempt to download `dotnetfx.exe` from an obsolete 2008 Microsoft link that returns **404 Not Found**!
+
+Run this command in PowerShell as Administrator on **`pro-win-server`** before installing:
 
 ```powershell
-# Download hMailServer into C:\software:
-Invoke-WebRequest -Uri "https://www.hmailserver.com/download/file/576" -OutFile "C:\software\hMailServer_Setup.exe" -UserAgent "Mozilla/5.0"
+Install-WindowsFeature Net-Framework-Core
 ```
-*(Or download directly from [hmailserver.com](https://www.hmailserver.com/download) on your laptop browser and place in `C:\software`)*.
+*(Windows enables the built-in .NET 3.5 feature in ~30 seconds, completely bypassing the 404 error!)*
 
 ---
 
-### 2.2 Run the Installer:
-1. Double-click **`C:\software\hMailServer_Setup.exe`**.
-2. Click **Next** ──► Accept Agreement ──► **Next**.
+### 2.2 Download hMailServer Installer:
+1. On `pro-win-server` or your host laptop browser, visit:  
+   👉 **[https://www.hmailserver.com/download](https://www.hmailserver.com/download)**
+2. Under **Latest version**, click:  
+   👉 **`Download hMailServer 5.6.8 - Build 2574`**
+3. Save the installer to: **`C:\software\hMailServer-5.6.8-B2574.exe`**
+
+---
+
+### 2.3 Run the Installer:
+1. Double-click **`C:\software\hMailServer-5.6.8-B2574.exe`**.
+2. Click **Next** ──► Choose **"I accept the agreement"** ──► Click **Next**.
 3. Destination: `C:\Program Files (x86)\hMailServer` ──► Click **Next**.
-4. **Select Components:**
+4. **Select Components:** Make sure both are checked:
    * ✅ **Server**
    * ✅ **Administrative tools**
    * Click **Next**.
@@ -241,17 +251,22 @@ Invoke-WebRequest -Uri "https://www.hmailserver.com/download/file/576" -OutFile 
 ## Phase 3: Configure Domain & Mailboxes in hMailServer
 
 ### 3.1 Connect to Administrator Console:
-1. When the login box appears, select **`localhost`** ──► click **Connect**.
-2. Type password: **`abc@123`** ──► click **OK**.
+When the connection dialog appears:
+1. Optional: Check the box: ✅ **Automatically connect on start-up**
+2. Click on **`localhost`** ──► click the **`Connect`** button at the bottom!
+3. When prompted for password:
+   * Type: 👉 **`abc@123`**
+   * Click **OK**!
 
 ---
 
 ### 3.2 Add Your Email Domain (`e6.local`):
-1. In the left tree, click on **`Domains`**.
-2. Click the **`Add...`** button on the right:
+Once the main hMailServer Administrator window opens:
+1. In the left tree menu, click on **`Domains`**.
+2. On the right side, click the **`Add...`** button:
    * **Domain:** `e6.local`
-   * **Status:** ✅ **Enabled**
-3. Click **Save** at the bottom right!
+   * **Status:** Ensure it is checked: ✅ **Enabled**
+3. Click the **`Save`** button at the bottom right!
 
 ---
 
