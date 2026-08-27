@@ -412,6 +412,46 @@ MX records are unique because they include a **Priority number** (Preference val
    The target `mail.e6.local` MUST point directly to an `A` record, never a CNAME alias. Pointing an MX record to a CNAME causes severe mail loops and delivery timeouts.
 3. **What happens if a domain has NO MX record?**  
    Under RFC 5321, if no MX record exists, sending servers attempt an emergency fallback to the domain's root `A record` (`e6.local ──► 192.168.1.10`). However, modern commercial servers treat missing MX records as a spam signal and may reject the connection.
+4. **🛑 The "Root Dot" (`.`) & The "Double Domain" Pitfall (RFC 1034 / 1035):**  
+   Why must FQDNs in DNS end with a trailing dot (`.`):
+
+   ```text
+   ========================================================================================
+   🛑 THE "DOUBLE DOMAIN" BUG: WHY THE TRAILING DOT (.) IS MANDATORY
+   ========================================================================================
+
+   In DNS architecture (RFC 1034), domain names have two formats:
+   
+   1. RELATIVE DOMAIN NAME (No dot at the end):
+      • Example: "mail" or "www"
+      • The DNS server assumes: "This name is relative to the current zone ($ORIGIN)!"
+      • The DNS server automatically appends the zone name to the end!
+   
+   2. ABSOLUTE DOMAIN NAME / FQDN (Ends with the Root Dot "."):
+      • Example: "mail.e6.local."
+      • The single dot at the very end represents the DNS Root Zone (.).
+      • The DNS server recognizes: "Stop! This address is complete. Append nothing!"
+   
+   ----------------------------------------------------------------------------------------
+   WHAT HAPPENS IN WINDOWS SERVER DNS MANAGER:
+   ----------------------------------------------------------------------------------------
+   
+   • If you type WITH dot:
+     "mail.e6.local." ──► DNS recognizes Absolute FQDN ──► Resolves: "mail.e6.local" ✅
+   
+   • If you type WITHOUT dot:
+     "mail.e6.local"  ──► DNS treats as Relative name   ──► Automatically appends zone:
+                          "mail.e6.local" + ".e6.local." ──► "mail.e6.local.e6.local." ❌!
+   
+   💥 THE CONSEQUENCE:
+   Outside sending servers receive an MX response pointing to "mail.e6.local.e6.local".
+   Because that non-existent double name has no IP, all incoming emails bounce immediately!
+   
+   💡 THE GOLDEN SOLUTION:
+   Either explicitly type the trailing dot ("mail.e6.local."), OR use the "Browse..." button
+   in dnsmgmt.msc to select your A record. Windows will format the trailing dot automatically!
+   ========================================================================================
+   ```
 
 ---
 

@@ -93,6 +93,14 @@ Tells the world where to deliver incoming emails for `@e6.local`:
    * **Mail server priority:** `10`
 3. Click **OK**!
 
+> [!CAUTION]
+> **🛑 CRITICAL DNS PITFALL: The Trailing Root Dot (`.`) & The Double Domain Bug**  
+> In DNS architecture (RFC 1034), if you type `mail.e6.local` without a trailing dot `.`, Windows DNS assumes it is a **relative name** and appends the zone name again, creating:  
+> ❌ **`mail.e6.local.e6.local.`** *(Broken! Incoming mail will bounce!)*  
+> Always either:
+> 1. Type the trailing dot explicitly: **`mail.e6.local.`**
+> 2. **OR** click the **`Browse...`** button and select the `mail` host. Windows will automatically insert the dot!
+
 ---
 
 ### 1.3 Verify & Create the Reverse PTR Record (rDNS / FCrDNS)
