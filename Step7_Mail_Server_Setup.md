@@ -402,8 +402,15 @@ Now switch to your client machine: **`pro-win-client` (`192.168.1.100`)**.
 You can use **Mozilla Thunderbird**, **Microsoft Outlook**, or **Windows Mail**.
 
 ### 5.1 Using Mozilla Thunderbird (Recommended & Free):
-1. Open **Thunderbird** on `pro-win-client`.
-2. Go to: **Account Settings ──► Add Mail Account**:
+
+> [!NOTE]
+> **⚠️ Windows 8 / 8.1 Client Compatibility (Thunderbird 115 ESR):**  
+> Modern Thunderbird versions require Windows 10 or newer. The **official final version that supports Windows 8 and 8.1** is **Thunderbird 115.15.0 ESR**!  
+> * **Direct Download Link:**  
+>   [https://archive.mozilla.org/pub/thunderbird/releases/115.15.0esr/win32/en-US/Thunderbird%20Setup%20115.15.0esr.exe](https://archive.mozilla.org/pub/thunderbird/releases/115.15.0esr/win32/en-US/Thunderbird%20Setup%20115.15.0esr.exe)
+
+1. Run the **Thunderbird 115 ESR** installer on `pro-win-client`.
+2. Open Thunderbird, go to: **Account Settings ──► Add Mail Account**:
    * **Your full name:** `Pengseang Sim`
    * **Email address:** `s.pengseang@e6.local`
    * **Password:** `abc@123`
@@ -486,13 +493,16 @@ In networking exams, professors often ask students to send an email using pure *
 
 ---
 
-## Phase 8: Troubleshooting Common Mail Server Errors
+## Phase 8: Troubleshooting Common Mail Server Errors (Lab Tested Solutions)
 
 | Error Code / Symptom | Root Cause | Exact Solution |
 |:---|:---|:---|
 | **"Could not connect to server / Connection refused on port 25"** | Windows Firewall is blocking Port 25, or hMailServer service is stopped. | Run `Get-Service hMailServer` on server. Ensure firewall rule `Mail Server - SMTP` is enabled. |
-| **"550 A password is required to send to external addresses"** | Client tried sending an email without SMTP Authentication enabled. | In Thunderbird Outgoing Server (SMTP) settings, ensure Authentication is set to **Normal Password**. |
-| **"550 Relay Access Denied"** | The mail server rejected the recipient because it is not configured for `@e6.local`. | Check hMailServer Administrator ──► Domains ──► verify `e6.local` exists and is Enabled. |
+| **"SMTP authentication is required"** | Client tried sending an email without SMTP Authentication, or Thunderbird Outgoing Server Authentication method was set to Blank/None. | In Thunderbird Outgoing Server (SMTP) settings, edit the server and set **Authentication method** to **Normal password** with full email `s.pengsorng@e6.local`. In hMailServer -> Settings -> Advanced -> IP Ranges -> Internet, uncheck `Local to local email addresses`. |
+| **"Unable to log in at server. Probably wrong configuration, username or password"** | 1. Account does not exist in hMailServer yet.<br>2. Username was typed as just `s.pengsorng` instead of full email `s.pengsorng@e6.local`.<br>3. Password typo (`abc@123` vs `abc@1234`). | In hMailServer, ensure account exists under Domains -> e6.local -> Accounts. In Thunderbird, set Incoming & Outgoing Username to the **full email address** (`s.pengsorng@e6.local`), and ensure password matches hMailServer. |
+| **"Status: Copying message to Sent folder..." (Progress bar stuck on send)** | Email sent via SMTP successfully, but IMAP could not find/create the remote `Sent` folder on the server. | 1. In Thunderbird, go to Account Settings -> Copies & Folders -> select **Other: Local Folders -> Sent** (instant local save).<br>2. OR right-click account -> New Folder -> `Sent` to pre-create the IMAP folder on the server. |
+| **"This version of Thunderbird requires Windows 10 or newer"** | Latest Thunderbird dropped support for Windows 7/8/8.1. | Download and install the official ESR release: **Thunderbird 115.15.0 (64-bit)** which fully supports Windows 8.1. |
+| **Password prompt appears every single time you click Send** | Outgoing SMTP password is not saved in Thunderbird's Password Vault (Saved Logins only has `imap://`). | When the Send password prompt appears, check the box **"Use Password Manager to remember this password"** before clicking OK. |
 | **"Server name could not be resolved"** | DNS MX or A record missing on Domain Controller. | Run `Resolve-DnsName mail.e6.local` and ensure it points to `192.168.1.10`. |
 
 ---
@@ -507,6 +517,8 @@ In networking exams, professors often ask students to send an email using pure *
 | 4 | **Database Server (Oracle 19c & PostgreSQL)** | ✅ Complete | [`Step4_Database_Server_Setup.md`](Step4_Database_Server_Setup.md) |
 | 5 | **Terminal Server (Remote Desktop Services - RDS)** | ✅ Complete | [`Step5_Terminal_Server_RDS_Setup.md`](Step5_Terminal_Server_RDS_Setup.md) |
 | 6 | **VPN Server (RRAS) & RADIUS Server (NPS)** | ✅ Complete | [`Step6_VPN_and_RADIUS_Server_Setup.md`](Step6_VPN_and_RADIUS_Server_Setup.md) |
-| 7 | **Mail Server (SMTP, POP3, IMAP)** | 🚀 Ready to Execute | [`Step7_Mail_Server_Setup.md`](Step7_Mail_Server_Setup.md) |
-| 8 | **Backup Server (Windows Server Backup - wbadmin)** | ⏳ Next | Step 8 |
-| 9 | **Load Balancing & Failover Cluster** | ⏳ Next | Step 9 & 10 |
+| 7 | **Mail Server (SMTP, POP3, IMAP)** | 🏆 **Complete & Verified!** | [`Step7_Mail_Server_Setup.md`](Step7_Mail_Server_Setup.md) |
+| 8 | **Backup Server (Windows Server Backup - wbadmin)** | ⏳ **Next Up!** | Step 8 |
+| 9 | **Load Balancing (NLB / ARR Farm)** | ⏳ Next | Step 9 |
+| 10 | **Failover Cluster (WSFC High Availability)** | ⏳ Final Step | Step 10 |
+

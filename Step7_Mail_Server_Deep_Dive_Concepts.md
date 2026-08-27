@@ -719,7 +719,61 @@ Inside the **hMailServer Administrator** graphical console, the left navigation 
 
 ---
 
-## 11. Full Abbreviation & Terminology Glossary
+## 11. Why Sent Message Synchronization Exists (SMTP vs. IMAP Architecture)
+
+### ❓ The Mystery: Why Doesn't SMTP Save a Copy of What You Sent?
+
+In 1982, when SMTP (RFC 821) was invented, it was designed as a pure **"Fire-and-Forget"** protocol.
+* **SMTP (Port 25):** Transports the email from the sender to the recipient's server and immediately drops the connection.
+* **SMTP NEVER saves a copy for the sender!**
+
+```text
+  ┌───────────────────┐               ┌───────────────────────┐
+  │  Client Machine   │  SMTP:25 Push │  hMailServer Engine   │ ──► Drops into Recipient's Inbox
+  │ (Pengsorng Sim)   ├──────────────►│ (pro-win-server)      │
+  └───────────────────┘               └───────────────────────┘
+                                                  │
+                                                  ▼
+                                      SMTP Closes Connection!
+                                      (NO COPY IS SAVED FOR SENDER!)
+```
+
+### 🔄 The IMAP Synchronization Solution:
+Because users need to see their sent history across multiple devices (Laptop, Work PC, Phone), the email client performs an automatic **two-step transaction**:
+
+1. **Step 1 (Delivery):** Pushes message to recipient via **SMTP (Port 25)**.
+2. **Step 2 (Sync):** Opens a second connection via **IMAP (Port 143)** and executes an `IMAP APPEND` command to upload a carbon copy into the sender's **`Sent`** folder!
+
+```text
+  ┌────────────────────────────────────────────────────────────────────────────────────────┐
+  │                           THE DUAL-PROTOCOL SEND FLOW                                  │
+  └────────────────────────────────────────────────────────────────────────────────────────┘
+  1. USER CLICKS "SEND":
+     Thunderbird ───[SMTP Port 25: Delivery]──────► Server ──► Recipient's Inbox ✅
+  
+  2. AUTOMATIC POST-SEND SYNC:
+     Thunderbird ───[IMAP Port 143: APPEND]───────► Server ──► Sender's "Sent" Folder 💾
+```
+
+### 🏢 Option 1 (Automatic Detection) vs Option 2 (Explicit Manual Target) in Client Settings:
+* **Option 1 (`"Sent" Folder on <account>`):** Thunderbird queries the server using IMAP `SPECIAL-USE` flags. If a brand-new server lacks this metadata, the client hangs on *"Copying message to Sent folder..."*.
+* **Option 2 (`Other: Sent on <account>` or `Local Folders`):** Explicitly tells the client the exact physical destination, eliminating guessing and executing instant uploads without freezing.
+
+### 💾 Where Emails Live Physically on Windows Server:
+hMailServer stores every message as a standard RFC 5322 MIME text file with the `.eml` extension:
+```text
+C:\Program Files (x86)\hMailServer\Data\e6.local\
+├── administrator\           ◄── All emails received by Administrator
+├── s.pengseang\             ◄── All emails received by Pengseang
+└── s.pengsorng\
+    ├── {GUID}.eml           ◄── Inbox messages
+    └── Sent\
+        └── {GUID}.eml       ◄── IMAP-synchronized sent copies!
+```
+
+---
+
+## 12. Full Abbreviation & Terminology Glossary
 
 | Term | Full Name | Clear Definition 🗣️ |
 |:---|:---|:---|
