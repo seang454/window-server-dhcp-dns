@@ -58,9 +58,9 @@
 
 ---
 
-## Phase 1: Configure Complete DNS Infrastructure for Mail (A, MX, PTR, SPF, DMARC, DKIM)
+## Phase 1: Configure Prerequisite DNS Infrastructure (A, MX, PTR, SPF, DMARC)
 
-Before installing any mail software, **all 6 DNS records must be created** so servers know where to route emails, how to verify sender identity, and how to block spoofing.
+Before installing any mail software, **these 5 foundational DNS records must be created** so servers know where to route emails, how to verify sender identity, and how to block spoofing. *(Note: DKIM cryptographic keys will be generated inside hMailServer in Phase 3 and published to DNS then!)*
 
 ---
 
@@ -146,22 +146,13 @@ Enforces policy and requests daily delivery and spoofing reports:
    *(Note: `p=none` is testing/monitoring mode. For production strict blocking, use `p=reject`)*.
 3. Click **OK** ──► click **Done**!
 
----
-
-### 1.6 Create the DKIM (DomainKeys Identified Mail) Record
-Publishes the public cryptographic key so recipients can verify digital signatures:
-
-*(Note: The exact RSA public key string is generated in Phase 3 inside hMailServer. Once generated, add it here)*:
-
-1. In the `e6.local` zone, right-click empty space ──► select **Other New Records...**.
-2. Select **Text (TXT)** ──► click **Create Record...**:
-   * **Record name:** `s1._domainkey`
-   * **FQDN:** Automatically becomes `s1._domainkey.e6.local`
-   * **Text:**
-     ```text
-     v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
-     ```
-3. Click **OK** ──► click **Done**!
+> [!NOTE]
+> **💡 Why is the Record Name `_dmarc` and the Text formatted like this?**
+> * **Why `_dmarc`?** Receiving servers (Gmail, Microsoft) are programmed by RFC 7489 to automatically query `_dmarc.<domain>`. The underscore `_` is used because DNS standards forbid underscores in normal computer names, ensuring this security record never collides with a real server name!
+> * **`v=DMARC1`**: Mandatory version identifier.
+> * **`p=none`**: Monitoring mode (allows emails through without blocking, but logs failures). In production, set to `p=reject` to completely destroy fake emails!
+> * **`rua=mailto:...`**: Destination address where worldwide servers automatically email daily XML audit reports.
+> * **`pct=100`**: Applies the rule to 100% of emails.
 
 ---
 
@@ -297,6 +288,39 @@ In the left tree:
      * Check: ✅ **External to external email addresses**  
      *(⚠️ This prevents your server from becoming an "Open Relay" spam bot!)*
 4. Click **Save**!
+
+---
+
+### 3.5 Generate & Publish the Real DKIM Cryptographic Key (hMailServer + DNS):
+
+Now that your domain exists, generate the matching RSA cryptographic key pair:
+
+#### 🔐 Part A: Generate Key in hMailServer:
+1. In hMailServer Administrator, expand **`Domains`** ──► click on **`e6.local`**.
+2. Click on the **`DKIM Signing`** tab.
+3. Click the **`Generate...`** button:
+   * **Key size:** `2048`
+   * **Save private key as:** `C:\Program Files (x86)\hMailServer\Data\dkim.private.key`
+   * Click **Save**!
+4. A popup window will display your **REAL, UNIQUE Public Key string**! **Copy that entire key text!**
+
+#### 🌐 Part B: Publish the Real Key into DNS (`dnsmgmt.msc`):
+1. Open **DNS Manager** (`dnsmgmt.msc`) ──► `Forward Lookup Zones` ──► `e6.local`.
+2. Right-click empty space ──► select **Other New Records...** ──► **Text (TXT)**:
+   * **Record name:** `s1._domainkey`
+   * **FQDN:** Automatically becomes `s1._domainkey.e6.local`
+   * **Text:**
+     ```text
+     v=DKIM1; k=rsa; p=PASTE_YOUR_COPIED_KEY_HERE
+     ```
+3. Click **OK** ──► Click **Done**!
+
+#### ✅ Part C: Enable DKIM in hMailServer:
+Back on the `DKIM Signing` tab in hMailServer:
+* **Selector:** `s1`
+* **Private key:** `C:\Program Files (x86)\hMailServer\Data\dkim.private.key`
+* Check: ✅ **Enabled**
+* Click **Save**!
 
 ---
 

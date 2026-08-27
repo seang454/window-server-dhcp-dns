@@ -600,6 +600,38 @@ SPF and DKIM operate independently. But what should a receiving server do if an 
 
 ---
 
+#### ❓ Deep Dive: Why is the Record Name Strictly `_dmarc`?
+* **1. The Automated Robot Standard (RFC 7489):**  
+  Every receiving mail server on earth (Gmail, Microsoft 365, Yahoo) is hardcoded to execute one exact automated query when inspecting an email from `@e6.local`:  
+  👉 `Query TXT for: _dmarc.e6.local`  
+  If you name the record anything else (such as `dmarc` without the underscore, or put it at `@`), receiving servers will **never find it** and assume you have zero security policy!
+* **2. The Underscore (`_`) Convention in DNS:**  
+  Under standard DNS rules (RFC 1034), ordinary hostnames (websites, computers) can **only** contain letters, numbers, and hyphens (`mail`, `web-01`). An underscore `_` is **strictly forbidden in hostnames**.  
+  The IETF intentionally chose the underscore prefix (`_dmarc`, `_domainkey`, `_msdcs`) so that **metadata records NEVER collide with real computers or websites**! No company can ever accidentally have a computer or web server named `_dmarc`.
+
+---
+
+#### 🔍 Deep Dive: Token-by-Token Syntax Breakdown of DMARC Text:
+
+```text
+  v=DMARC1; p=none; rua=mailto:administrator@e6.local; pct=100
+  ───┬────   ──┬───  ──────────────┬──────────────────  ───┬───
+     │         │                   │                       │
+     │         │                   │                       └── 4. Apply to 100% of emails
+     │         │                   └── 3. Send daily audit reports to this email
+     │         └── 2. Policy: What to do if an email fails (none / quarantine / reject)
+     └── 1. Protocol Version: Must always be DMARC1
+```
+
+| Token | Component | Purpose & Why It Must Be Set This Way 🗣️ |
+|:---|:---|:---|
+| **`v=DMARC1`** | **Version Tag** | **Mandatory.** Must be the very first tag. Tells receiving DNS parsers: *"This is a DMARC version 1 record."* If omitted or lowercase, the record is discarded as invalid. |
+| **`p=none`** | **Policy Tag** | Dictates what receiving servers must do when an email fails SPF/DKIM authentication. Options: <br>• **`none` (Monitor/Testing):** Do not block; let the email pass, but log it in reports. (Best for initial lab setup!)<br>• **`quarantine` (Spam):** Deliver unauthorized emails directly into the Junk folder.<br>• **`reject` (Iron Shield):** Completely block and drop unauthorized emails at the connection gateway! |
+| **`rua=mailto:...`** | **Aggregate Reporting Tag** | Specifies the destination email address where worldwide mail servers (Google, Microsoft) automatically send daily XML reports detailing all IPs sending mail as your domain. |
+| **`pct=100`** | **Percentage Tag** | Specifies what percentage of messages to apply the policy to (`100` = 100% of messages). |
+
+---
+
 ## 📊 Master Comparison: The 6 DNS Records for Email
 
 | Record | DNS Type | Exact Name / Subdomain | Example Target / Content | Failure Consequence if Missing 💥 |
