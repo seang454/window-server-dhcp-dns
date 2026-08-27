@@ -257,6 +257,58 @@ Why do banks, universities, hospitals, and governments run their own internal ma
 
 ## 8. How Email Routing Works Internally (Step-by-Step Flow)
 
+### 🔄 The Runtime Operational Journey (Client ──► Server ──► Mailbox ──► Recipient)
+
+```text
+  ========================================================================================
+                          THE RUNTIME OPERATIONAL JOURNEY
+  ========================================================================================
+
+  💻 pro-win-client (s.pengseang)                    🖥️ pro-win-server (mail.e6.local)
+  ┌───────────────────────────────┐                  ┌──────────────────────────────────┐
+  │ Thunderbird Email Client      │                  │ hMailServer Engine               │
+  │ 1. User clicks "Send":        │                  │                                  │
+  │    To: administrator@e6.local │                  │                                  │
+  └───────────────┬───────────────┘                  │                                  │
+                  │                                  │                                  │
+                  │ ─── 2. DNS Query: Where is MX for e6.local? ────────────────────────►│
+                  │◄─── 3. DNS Answer: mail.e6.local (192.168.1.10) ────────────────────│
+                  │                                  │                                  │
+                  │ ─── 4. Connects to SMTP Port 25 ────────────────────────────────────►│
+                  │ ─── 5. Authenticates: s.pengseang / abc@123 ────────────────────────►│
+                  │ ─── 6. Transmits Subject, Body & Attachments ───────────────────────►│
+                  │                                  │                                  │
+                  │                                  │ 7. Mail Server processes:        │
+                  │                                  │    • Checks SPF: Authentic! 🟢   │
+                  │                                  │    • Checks destination domain:  │
+                  │                                  │      "@e6.local is LOCAL!"       │
+                  │                                  │    • Deposits .eml file into:    │
+                  │                                  │      C:\Mail\e6.local\admin\     │
+                  │                                  │                                  │
+                  │                                  │ 8. IMAP Push Notification:       │
+                  │                                  │    "Admin, you have 1 new mail!" │
+  💻 Admin Workstation                               │                                  │
+  ┌───────────────────────────────┐                  │                                  │
+  │ Thunderbird / Webmail         │◄─────────────────┴──────────────────────────────────┘
+  │ 9. Ding! 🔔 New Email Pops Up:│    (Fetched over IMAP Port 143 in <10ms!)
+  │    "From: s.pengseang@e6.local│
+  │     Subject: Project Update"  │
+  └───────────────────────────────┘
+  ========================================================================================
+```
+
+#### 🔍 Step-by-Step Journey Breakdown:
+1. **User Clicks Send:** User drafts an email in their MUA (Mozilla Thunderbird).
+2. **DNS MX Resolution:** The client queries the DNS server (`192.168.1.10`) for the MX record of `e6.local` and receives `mail.e6.local` (Priority 10), then resolves `mail.e6.local` to `192.168.1.10`.
+3. **Outbound SMTP Push (Port 25/587):** The client establishes a TCP connection to Port 25 on the mail server.
+4. **Authentication:** The client proves identity using `AUTH LOGIN` with credentials `s.pengseang` / `abc@123`.
+5. **Security & SPF Inspection:** The server validates that the sender's IP is authorized to send mail for `@e6.local`.
+6. **Local Mailbox Deposit (MDA):** Because the destination is `@e6.local`, the server does not relay the email outside; it writes the `.eml` file directly into `C:\Program Files (x86)\hMailServer\Data\e6.local\administrator\`.
+7. **Inbound IMAP Sync (Port 143):** The recipient's email client connects over IMAP, receives the push notification, downloads the cached headers, and rings the new email alert!
+
+---
+
+### 💬 The Live SMTP Handshake Protocol (Raw Commands):
 Here is the exact conversational protocol that happens between the client and server when an email is sent:
 
 ```text
