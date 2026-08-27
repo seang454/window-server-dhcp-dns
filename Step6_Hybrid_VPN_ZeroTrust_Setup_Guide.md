@@ -683,3 +683,64 @@ Get-WinEvent -LogName "Security" -FilterXPath "*[System[(EventID=6272 or EventID
 | **Error 691** (User authentication failure) | Wrong username/password, or Dial-in disabled. | Check credentials (`E6\s.pengseang`). In `dsa.msc`, verify Dial-in is set to "Allow access" or "Control through NPS". |
 | **Error 812** (Policy denied connection) | NPS policy conditions or authentication mismatch. | In `nps.msc`, verify `Allow_VPN_Access` has **MS-CHAP-v2** checked and is at **Processing Order: 1**. |
 | **No Virtual IP Assigned** | Static address pool is exhausted or missing. | In `rrasmgmt.msc` properties ──► IPv4 tab ──► verify pool `192.168.1.220 - 192.168.1.240` is present. |
+| **RRAS Fails to Start (Event 7024)** | NPS (`IAS`) starts before RRAS, causing callback deadlock. | Stop `IAS`, start `RemoteAccess`, start `IAS`, and configure `DelayedAutostart = 1`. |
+
+---
+
+### 🚨 Deep-Dive Incident Fix: RRAS "Callback Function Must Be Invoked Inline" (Event 7024)
+
+#### 💥 Part 1: What Was The Problem?
+1. **The Symptoms:**
+   * In `rrasmgmt.msc`, the server had a **red circle (🔴)** and showed **"State: Stopped"**.
+   * Clicking **"Start" in the UI failed** with:  
+     👉 *"The service has returned a service-specific error code."*
+   * In Windows Event Viewer, Windows recorded:  
+     👉 **`Event ID 7024: The callback function must be invoked inline.`**
+   * On `pro-win-client`, VPN connection failed with:  
+     👉 **`Error 807`** *(because the VPN service on the server was literally stopped!)*.
+
+2. **The Core Technical Cause:**
+   On your server, two critical roles run together on the same machine:
+   * **RRAS (`RemoteAccess`)** — The VPN engine.
+   * **NPS (`IAS`)** — The RADIUS authentication service.
+   
+   When the server booted, **NPS (`IAS`) started FIRST** and locked the internal Windows communication channel.
+   When **RRAS (`RemoteAccess`)** tried to start, it attempted to register an internal synchronous callback with NPS. Because the channel was already busy, the Windows kernel threw:  
+   👉 **`"The callback function must be invoked inline"`** and killed the RRAS service!
+
+---
+
+#### 🛠️ Part 2: How Did We Fix This Problem?
+We solved it in two stages: the **Immediate Rescue** and the **Permanent Protection**.
+
+```text
+  OLD BROKEN SEQUENCE (Crash 💥):
+  Windows Boots ──► NPS (IAS) Starts First ──► RRAS Starts ──► 💥 DEADLOCK CRASH!
+
+  NEW FIXED SEQUENCE (100% Working 🟢):
+  Windows Boots ──► RRAS Starts First 🟢 ──► NPS (IAS) Starts (Delayed) 🟢 ──► SUCCESS!
+```
+
+##### ⚡ Step 1: The Immediate Rescue (Clearing the Deadlock)
+We used PowerShell to force the correct startup order:
+
+```powershell
+# 1. Temporarily pause Network Policy Server to free up the locked communication channel:
+Stop-Service IAS -Force
+
+# 2. Start the VPN service while the channel was 100% clean and clear (starts instantly!):
+Start-Service RemoteAccess
+
+# 3. Start Network Policy Server back up (both services are now running and talking to each other!):
+Start-Service IAS
+```
+
+##### 🔒 Step 2: The Permanent Fix (Never Happens Again on Reboot)
+To prevent this race condition from ever occurring again when the server restarts:
+
+```powershell
+Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Services\IAS" -Name "DelayedAutostart" -Value 1 -Type DWord
+```
+
+* **What this does:** Changes the **Network Policy Server (`IAS`)** startup type in the Windows Registry to **`Automatic (Delayed Start)`**.
+* **The Result:** Every time you turn on your server in the future, Windows will **always start RRAS first**, and wait 2 minutes before starting NPS. **Zero crashes forever!** 🏆
