@@ -329,36 +329,35 @@ In the left tree:
 
 ---
 
-### 3.7 Generate & Publish the Real DKIM Cryptographic Key (hMailServer + DNS):
+### 3.7 (Advanced / Production Optional): DKIM Cryptographic Signing Setup
 
-Now that your domain exists, generate the matching RSA cryptographic key pair:
+> [!IMPORTANT]
+> **📌 WHEN DO YOU NEED TO SET THIS UP?**
+> * **For Local Networks & University Labs (Our Current Lab Setup):**  
+>   👉 **LEAVE THIS UNCHECKED / SKIPPED!** You do **NOT** need DKIM to send, receive, or synchronize emails between your Windows 8 client VMs. Everything works 100% with standard Host A, MX, and PTR records!
+> * **When is DKIM ACTUALLY Required in the Real World?**  
+>   👉 Only in **Public Internet Production** when your server sends outbound emails directly to external providers like **Gmail**, **Microsoft 365**, or **Yahoo**. Modern public mail providers require DKIM signatures to prove that the email was not modified or spoofed in transit.
+>
+> ---
+>
+> **📍 WHERE IS THIS CONFIGURED? (Saved for Future Reference):**
+> * **In hMailServer:** Expand `Domains` ──► click `e6.local` ──► click the **`DKIM Signing`** tab.
+> * **In DNS Manager (`dnsmgmt.msc`):** `Forward Lookup Zones` ──► `e6.local` ──► Text (TXT) record named **`s1._domainkey`**.
+> * **The Private Key File:** Saved on server disk at `C:\Program Files (x86)\hMailServer\Data\dkim.private.key`.
 
-#### 🔐 Part A: Generate Key in hMailServer:
-1. In hMailServer Administrator, expand **`Domains`** ──► click on **`e6.local`**.
-2. Click on the **`DKIM Signing`** tab.
-3. Click the **`Generate...`** button:
-   * **Key size:** `2048`
-   * **Save private key as:** `C:\Program Files (x86)\hMailServer\Data\dkim.private.key`
-   * Click **Save**!
-4. A popup window will display your **REAL, UNIQUE Public Key string**! **Copy that entire key text!**
-
-#### 🌐 Part B: Publish the Real Key into DNS (`dnsmgmt.msc`):
-1. Open **DNS Manager** (`dnsmgmt.msc`) ──► `Forward Lookup Zones` ──► `e6.local`.
-2. Right-click empty space ──► select **Other New Records...** ──► **Text (TXT)**:
-   * **Record name:** `s1._domainkey`
-   * **FQDN:** Automatically becomes `s1._domainkey.e6.local`
-   * **Text:**
-     ```text
-     v=DKIM1; k=rsa; p=PASTE_YOUR_COPIED_KEY_HERE
-     ```
-3. Click **OK** ──► Click **Done**!
-
-#### ✅ Part C: Enable DKIM in hMailServer:
-Back on the `DKIM Signing` tab in hMailServer:
-* **Selector:** `s1`
-* **Private key:** `C:\Program Files (x86)\hMailServer\Data\dkim.private.key`
-* Check: ✅ **Enabled**
-* Click **Save**!
+#### 🛠️ How to Enable in Production (When Needed):
+1. On a production machine with OpenSSL installed, generate the key pair:
+   ```cmd
+   openssl genrsa -out "C:\Program Files (x86)\hMailServer\Data\dkim.private.key" 2048
+   openssl rsa -in "C:\Program Files (x86)\hMailServer\Data\dkim.private.key" -pubout -out "C:\Program Files (x86)\hMailServer\Data\dkim.public.key"
+   ```
+2. Copy the public key text and add a TXT record in DNS Manager:
+   * **Name:** `s1._domainkey`
+   * **Value:** `v=DKIM1; k=rsa; p=<PUBLIC_KEY_STRING>`
+3. In hMailServer under `e6.local` ──► `DKIM Signing`:
+   * **Selector:** `s1`
+   * **Private key file:** `C:\Program Files (x86)\hMailServer\Data\dkim.private.key`
+   * Check: ✅ **Enabled** ──► click **Save**!
 
 ---
 
