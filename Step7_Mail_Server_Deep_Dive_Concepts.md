@@ -18,10 +18,10 @@
 5. [Real-World Enterprise Use Cases](#5-real-world-enterprise-use-cases)
 6. [Advantages of an In-House Mail Server](#6-advantages-of-an-in-house-mail-server)
 7. [What Happens WITH vs WITHOUT an Enterprise Mail Server](#7-what-happens-with-vs-without-an-enterprise-mail-server)
-8. [How Email Routing Works Internally (Step-by-Step Flow)](#8-how-email-routing-works-internally-step-by-step-flow)
-9. [DNS Records Required for Email (MX, A, PTR, SPF, DKIM)](#9-dns-records-required-for-email-mx-a-ptr-spf-dkim)
-10. [Full Abbreviation & Terminology Glossary](#10-full-abbreviation--terminology-glossary)
-11. [Residential ISP Realities: Why ISPs Block Port 25 (Ezecom Context)](#11-residential-isp-realities-why-isps-block-port-25-ezecom-context)
+9. [DNS Records Required for Email (MX, A, PTR, SPF, DKIM, DMARC)](#9-dns-records-required-for-email-mx-a-ptr-spf-dkim-dmarc)
+10. [The 6 Administration Folders in hMailServer Explained](#10-the-6-administration-folders-in-hmailserver-explained)
+11. [Full Abbreviation & Terminology Glossary](#11-full-abbreviation--terminology-glossary)
+12. [Residential ISP Realities: Why ISPs Block Port 25 (Ezecom Context)](#12-residential-isp-realities-why-isps-block-port-25-ezecom-context)
 
 ---
 
@@ -645,7 +645,72 @@ SPF and DKIM operate independently. But what should a receiving server do if an 
 
 ---
 
-## 10. Full Abbreviation & Terminology Glossary
+## 10. The 6 Administration Folders in hMailServer Explained
+
+Inside the **hMailServer Administrator** graphical console, the left navigation tree is divided into two operational zones: **Domain-Specific Folders** and **Global Server Controls**.
+
+```text
+  ========================================================================================
+                          hMailServer CONSOLE ARCHITECTURE
+  ========================================================================================
+
+  e6.local (Your Domain)
+  ├── 👤 Accounts             ──► Real human mailboxes (stores messages & has passwords)
+  ├── 🏷️ Aliases              ──► Forwarding nicknames (forwards to another email)
+  └── 👥 Distribution lists  ──► Group mailing lists (1 email goes to 10 people)
+
+  Global Server Controls
+  ├── 📜 Rules                ──► Automated filters ("If subject contains 'Spam' ──► Delete")
+  ├── ⚙️ Settings             ──► Engine controls (Ports 25/143, Anti-Spam, Firewall, Logs)
+  └── 🧰 Utilities            ──► Tools (Backup/Restore, Diagnostics, Test DNS MX)
+  ========================================================================================
+```
+
+### 1️⃣ Accounts (Real Mailboxes):
+* **What it is:** A full, authentic personal mailbox for a user.
+* **Characteristics:** Has its own password, personal inbox, sent folder, disk storage quota (e.g. 1000 MB), and physical directory on the server disk containing `.eml` files.
+* **Example:** `s.pengseang@e6.local` (Password: `abc@123`).
+
+### 2️⃣ Aliases (Forwarding Nicknames):
+* **What it is:** A virtual forwarding address that has **no password and no storage**. Any email sent to an alias is immediately rerouted to a real mailbox!
+* **Real-World Example:**  
+  You create an alias: `help@e6.local` ──► set it to forward to `s.pengseang@e6.local`.  
+  Whenever a customer emails `help@e6.local`, it lands straight in your personal inbox!
+
+### 3️⃣ Distribution Lists (Group Mailing Lists):
+* **What it is:** A broadcast address representing a team or department.
+* **Real-World Example:**  
+  You create a list: `class-e6@e6.local` and add 30 students to the **Members** tab.  
+  When the professor sends 1 email to `class-e6@e6.local`, **all 30 students receive a copy instantly**!
+* **The 3 Modes:**
+  * **Public:** Anyone inside or outside can email the group.
+  * **Members:** Only group members are allowed to email the list (prevents outsiders from spamming staff).
+  * **Announcement:** Only the administrator can send messages (one-way broadcast; replies blocked).
+
+### 4️⃣ Rules (Automated Server Robots):
+* **What it is:** "If-This-Then-That" automated server-side email processing rules.
+* **Examples:**
+  * *"If the email subject contains the word **'Invoice'**, automatically forward a copy to `accounting@e6.local`."*
+  * *"If an email attachment exceeds 50 MB, reject it with an error message."*
+  * *"If email matches known spam keywords, delete it immediately before reaching inboxes."*
+
+### 5️⃣ Settings (The Master Control Panel):
+* **What it is:** The master configuration for the entire email engine.
+* **Contains:**
+  * **Protocols:** Enable or disable SMTP (Port 25/587), POP3 (Port 110/995), and IMAP (Port 143/993).
+  * **Advanced ──► IP Ranges:** Configures allowed network ranges and mandates SMTP authentication to prevent the server from becoming an **Open Relay**.
+  * **Anti-Spam:** Enables SPF verification, DKIM signing, and public DNS Blacklists (DNSBL / Spamhaus).
+  * **Logging:** Enables live transaction logs to monitor emails flowing through the server in real-time.
+
+### 6️⃣ Utilities (Diagnostics & Backup):
+* **What it is:** Essential maintenance and diagnostic tools for the IT administrator.
+* **Contains:**
+  * **Diagnostics:** Performs an automated health check verifying that TCP ports, database connections, and DNS MX records are operational.
+  * **Backup:** Creates a complete backup archive of all emails, domains, accounts, and settings to a single zip file for disaster recovery!
+
+---
+
+## 11. Full Abbreviation & Terminology Glossary
 
 | Term | Full Name | Clear Definition 🗣️ |
 |:---|:---|:---|
@@ -664,7 +729,7 @@ SPF and DKIM operate independently. But what should a receiving server do if an 
 
 ---
 
-## 11. Residential ISP Realities: Why ISPs Block Port 25 (Ezecom Context)
+## 12. Residential ISP Realities: Why ISPs Block Port 25 (Ezecom Context)
 
 A common student question:  
 > *"Can my Windows Server directly send an email to a real `@gmail.com` address from my home in Cambodia?"*

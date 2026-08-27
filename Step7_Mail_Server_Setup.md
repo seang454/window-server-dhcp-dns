@@ -292,7 +292,30 @@ Under your new domain `e6.local`:
 
 ---
 
-### 3.4 Configure Anti-Relay & Authentication Rules:
+### 3.4 (Optional): Create a Distribution List (Group Email Address):
+If you want 1 email address (e.g. `team@e6.local`) to deliver to multiple users at once:
+1. Under `e6.local`, click **`Distribution lists`** ──► click **`Add...`**:
+   * **Address:** `team`
+   * **Mode:** Select `Public` (anyone can email) or `Members` (only members can email)
+   * Check: ✅ **Enabled** ──► click **Save**!
+2. Click the **`Members`** tab ──► click **`Add...`**:
+   * Add: `administrator@e6.local`
+   * Add: `s.pengseang@e6.local`
+3. Click **Save**! Now emails sent to `team@e6.local` reach both users!
+
+---
+
+### 3.5 The 6 Console Folders Explained (Quick Reference):
+* **`Accounts`**: Real human mailboxes (stores messages on disk, has password, quota).
+* **`Aliases`**: Forwarding nicknames (`help@e6.local` forwards straight to a real mailbox).
+* **`Distribution lists`**: Group mailing lists (1 email automatically broadcasts to 10+ members).
+* **`Rules`**: Automated filters ("If Subject contains 'Spam' ──► Delete").
+* **`Settings`**: Core engine controls (SMTP/IMAP/POP3 ports, Anti-Spam SPF, IP Ranges).
+* **`Utilities`**: Administrative tools (Automated health diagnostics & full system backup).
+
+---
+
+### 3.6 Configure Anti-Relay & Authentication Rules:
 In the left tree:
 1. Click **`Settings`** ──► **`Advanced`** ──► **`IP Ranges`**.
 2. Click on **`My computer`** (`127.0.0.1`):
@@ -306,7 +329,7 @@ In the left tree:
 
 ---
 
-### 3.5 Generate & Publish the Real DKIM Cryptographic Key (hMailServer + DNS):
+### 3.7 Generate & Publish the Real DKIM Cryptographic Key (hMailServer + DNS):
 
 Now that your domain exists, generate the matching RSA cryptographic key pair:
 
