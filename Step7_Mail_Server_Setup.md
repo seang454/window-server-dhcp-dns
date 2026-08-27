@@ -58,12 +58,15 @@
 
 ---
 
-## Phase 1: Configure DNS Infrastructure for Mail (A, MX, PTR Records)
+## Phase 1: Configure Complete DNS Infrastructure for Mail (A, MX, PTR, SPF, DMARC, DKIM)
 
-Before installing any mail software, **DNS must be configured first** so servers know where to route emails.
+Before installing any mail software, **all 6 DNS records must be created** so servers know where to route emails, how to verify sender identity, and how to block spoofing.
+
+---
 
 ### 1.1 Create the Host A Record (`mail.e6.local`)
-On **`pro-win-server`**:
+Resolves the mail hostname into the server's physical IP address:
+
 1. Press **`Win + R`** ──► type:
    ```cmd
    dnsmgmt.msc
@@ -80,6 +83,8 @@ On **`pro-win-server`**:
 ---
 
 ### 1.2 Create the MX (Mail Exchanger) Record
+Tells the world where to deliver incoming emails for `@e6.local`:
+
 1. In the same `e6.local` zone, right-click empty white space.
 2. Select **Mail Exchanger (MX)...**:
    * **Host or child domain:** Leave **BLANK** *(means the entire `@e6.local` domain)*.
@@ -90,24 +95,111 @@ On **`pro-win-server`**:
 
 ---
 
-### 1.3 Verify DNS in PowerShell:
-Run these commands in PowerShell to verify DNS is 100% ready:
+### 1.3 Verify & Create the Reverse PTR Record (rDNS / FCrDNS)
+Proves the IP `192.168.1.10` authentically belongs to `mail.e6.local`:
+
+1. In DNS Manager, expand **Reverse Lookup Zones**.
+2. Click on: **`1.168.192.in-addr.arpa`** *(or your reverse zone)*.
+3. Look for IP **`192.168.1.10`**:
+   * If already present, ensure it points to: **`mail.e6.local.`**
+   * If missing: Right-click empty space ──► **New Pointer (PTR)...**:
+     * **Host IP Number:** `10`
+     * **Host name:** `mail.e6.local.`
+     * Click **OK**!
+
+---
+
+### 1.4 Create the SPF (Sender Policy Framework) Record
+Whitelists your server IP so impostors cannot send fake emails claiming to be from `@e6.local`:
+
+1. In **Forward Lookup Zones** ──► click **`e6.local`**.
+2. Right-click empty white space ──► select **Other New Records...**.
+3. Select **Text (TXT)** in the list ──► click **Create Record...**:
+   * **Record name:** Leave **BLANK** *(applies to `@e6.local` root)*.
+   * **Text:**
+     ```text
+     v=spf1 mx ip4:192.168.1.10 -all
+     ```
+4. Click **OK** ──► click **Done**!
+
+---
+
+### 1.5 Create the DMARC Policy Record
+Enforces policy and requests daily delivery and spoofing reports:
+
+1. In the `e6.local` zone, right-click empty space ──► select **Other New Records...**.
+2. Select **Text (TXT)** ──► click **Create Record...**:
+   * **Record name:** `_dmarc`
+   * **FQDN:** Automatically becomes `_dmarc.e6.local`
+   * **Text:**
+     ```text
+     v=DMARC1; p=none; rua=mailto:administrator@e6.local; pct=100
+     ```
+   *(Note: `p=none` is testing/monitoring mode. For production strict blocking, use `p=reject`)*.
+3. Click **OK** ──► click **Done**!
+
+---
+
+### 1.6 Create the DKIM (DomainKeys Identified Mail) Record
+Publishes the public cryptographic key so recipients can verify digital signatures:
+
+*(Note: The exact RSA public key string is generated in Phase 3 inside hMailServer. Once generated, add it here)*:
+
+1. In the `e6.local` zone, right-click empty space ──► select **Other New Records...**.
+2. Select **Text (TXT)** ──► click **Create Record...**:
+   * **Record name:** `s1._domainkey`
+   * **FQDN:** Automatically becomes `s1._domainkey.e6.local`
+   * **Text:**
+     ```text
+     v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
+     ```
+3. Click **OK** ──► click **Done**!
+
+---
+
+### ⚡ Fast Track: Automated 1-Click PowerShell DNS Setup
+Instead of clicking through the GUI, you can create all DNS mail records in **2 seconds** by running this script in PowerShell as Administrator on **`pro-win-server`**:
 
 ```powershell
-# 1. Verify A Record:
-Resolve-DnsName mail.e6.local
+# 1. Create Host A Record:
+Add-DnsServerResourceRecordA -ZoneName "e6.local" -Name "mail" -IPv4Address 192.168.1.10 -CreatePtr -ErrorAction SilentlyContinue
 
-# 2. Verify MX Record:
+# 2. Create MX Record (Priority 10):
+Add-DnsServerResourceRecordMX -ZoneName "e6.local" -Name "@" -MailExchange "mail.e6.local" -Preference 10 -ErrorAction SilentlyContinue
+
+# 3. Create SPF TXT Record:
+Add-DnsServerResourceRecord -ZoneName "e6.local" -Txt -Name "@" -DescriptiveText "v=spf1 mx ip4:192.168.1.10 -all" -ErrorAction SilentlyContinue
+
+# 4. Create DMARC TXT Record:
+Add-DnsServerResourceRecord -ZoneName "e6.local" -Txt -Name "_dmarc" -DescriptiveText "v=DMARC1; p=none; rua=mailto:administrator@e6.local; pct=100" -ErrorAction SilentlyContinue
+
+# 5. Flush and verify:
+Clear-DnsClientCache
 Resolve-DnsName e6.local -Type MX
+Resolve-DnsName e6.local -Type TXT
+Resolve-DnsName _dmarc.e6.local -Type TXT
 ```
 
-🟢 **Expected Output for MX:**
-```text
-NameExchange   : mail.e6.local
-Preference     : 10
-Name           : e6.local
-Type           : MX
+---
+
+### 1.7 Verify Complete DNS Setup in PowerShell:
+Run these verification commands to ensure every single record resolves:
+
+```powershell
+# Verify A:
+Resolve-DnsName mail.e6.local | Format-Table Name, Type, IPAddress
+
+# Verify MX:
+Resolve-DnsName e6.local -Type MX | Format-Table Name, Type, Preference, NameExchange
+
+# Verify SPF:
+Resolve-DnsName e6.local -Type TXT | Select-Object -ExpandProperty Strings
+
+# Verify DMARC:
+Resolve-DnsName _dmarc.e6.local -Type TXT | Select-Object -ExpandProperty Strings
 ```
+
+🟢 **Expected Output:** All 4 records return successfully with exact parameters!
 
 ---
 
