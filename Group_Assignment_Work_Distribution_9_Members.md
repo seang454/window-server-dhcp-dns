@@ -423,7 +423,8 @@
    * Attach secondary 40 GB SCSI virtual disk in VMware Workstation.
    * Initialize as GPT, partition, and format as Drive **`B:\`** labeled **`Backups`**.
 2. **Install Windows Server Backup:**
-   * Run: `Install-WindowsFeature Windows-Server-Backup -IncludeManagementTools`.
+   * **GUI Method:** Server Manager ──► `Manage` ──► `Add Roles and Features` ──► `Features` tab ──► Check ☑️ **`Windows Server Backup`** ──► `Install`.
+   * **PowerShell Method:** `Install-WindowsFeature Windows-Server-Backup -IncludeManagementTools`.
 3. **Execute System State Backup via `wbadmin`:**
    * Run command: `wbadmin start systemstatebackup -backupTarget:B: -quiet`.
    * Backs up Active Directory (`ntds.dit`), `SYSVOL`, Registry, and Boot configuration.
