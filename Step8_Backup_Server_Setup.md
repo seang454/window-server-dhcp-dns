@@ -11,6 +11,7 @@
 
 ## 📖 Table of Contents
 
+### 🛠️ PART 1: INSTALLATION & CONFIGURATION PHASES (PHASES 1 - 6)
 1. [Lab Topology & Disaster Recovery Overview](#1-lab-topology--disaster-recovery-overview)
 2. [Phase 1: Add a Dedicated Virtual Hard Disk in VMware Workstation](#phase-1-add-a-dedicated-virtual-hard-disk-in-vmware-workstation)
 3. [Phase 2: Initialize & Format the Backup Drive in Windows Server](#phase-2-initialize--format-the-backup-drive-in-windows-server)
@@ -18,14 +19,22 @@
 5. [Phase 4: Perform a One-Time System State Backup via PowerShell (`wbadmin`)](#phase-4-perform-a-one-time-system-state-backup-via-powershell-wbadmin)
 6. [Phase 5: Perform a Full Server / Volume Backup via GUI (`wbadmin.msc`)](#phase-5-perform-a-full-server--volume-backup-via-gui-wbadminmsc)
 7. [Phase 6: Configure an Automated Daily Backup Schedule (2:00 AM)](#phase-6-configure-an-automated-daily-backup-schedule-200-am)
-8. [Phase 7: The Master 7-Step Enterprise Disaster Recovery Testing Suite](#phase-7-the-master-7-step-enterprise-disaster-recovery-testing-suite)
-   * [7.1 Flow 1: Backup Catalog Verification](#-71-flow-1-backup-catalog-verification-checking-the-storage-vault)
-   * [7.2 Flow 2: Live Mission-Critical File Disaster Recovery](#-72-flow-2-live-mission-critical-file-disaster-recovery-ransomware--deletion-simulation)
-   * [7.3 Flow 3: Automated Daily 2:00 AM Schedule Verification](#-73-flow-3-automated-daily-200-am-schedule-verification-unattended-bcp-policy)
-   * [7.4 Flow 4: Visual GUI Console Verification](#-74-flow-4-visual-gui-console-verification-executive--auditor-proof)
-   * [7.5 Flow 5: VSS Writer Health & Database Consistency Check](#-75-flow-5-vss-writer-health--database-consistency-check-bank-grade-integrity)
-   * [7.6 Flow 6: Active Directory Object Disaster Recovery](#-76-flow-6-active-directory-object-disaster-recovery-deleted-user-account-resurrect)
-   * [7.7 Flow 7: Automated Backup Retention Policy & Storage Purge](#-77-flow-7-automated-backup-retention-policy--storage-purge-lifecycle-management)
+
+---
+
+### 🧪 PART 2: THE OFFICIAL TESTING & VERIFICATION PHASE (PHASE 7)
+8. [Phase 7: [TESTING PHASE] The Master 7-Step Enterprise Disaster Recovery Testing Suite](#phase-7-testing-phase-the-master-7-step-enterprise-disaster-recovery-testing-suite)
+   * [7.1 Flow 1: Backup Catalog Verification (Checking the Storage Vault)](#-71-flow-1-backup-catalog-verification-checking-the-storage-vault)
+   * [7.2 Flow 2: Live Mission-Critical File Disaster Recovery (Ransomware Test)](#-72-flow-2-live-mission-critical-file-disaster-recovery-ransomware--deletion-simulation)
+   * [7.3 Flow 3: Automated Daily 2:00 AM Schedule Verification (Unattended BCP)](#-73-flow-3-automated-daily-200-am-schedule-verification-unattended-bcp-policy)
+   * [7.4 Flow 4: Visual GUI Console Verification (Auditor Proof)](#-74-flow-4-visual-gui-console-verification-executive--auditor-proof)
+   * [7.5 Flow 5: VSS Writer Health & Database Consistency Check (Bank-Grade)](#-75-flow-5-vss-writer-health--database-consistency-check-bank-grade-integrity)
+   * [7.6 Flow 6: Active Directory Object Disaster Recovery (Deleted User Resurrect)](#-76-flow-6-active-directory-object-disaster-recovery-deleted-user-account-resurrect)
+   * [7.7 Flow 7: Automated Backup Retention Policy & Storage Purge (Lifecycle)](#-77-flow-7-automated-backup-retention-policy--storage-purge-lifecycle-management)
+
+---
+
+### 🛡️ PART 3: TROUBLESHOOTING & SUMMARY (PHASES 8 - 10)
 9. [Phase 8: Troubleshooting Common Windows Server Backup Errors](#phase-8-troubleshooting-common-windows-server-backup-errors)
 10. [Summary of Master Server Roles Completed](#10-summary-of-master-server-roles-completed)
 
@@ -293,9 +302,12 @@ Schedule : {02:00:00}
 
 🟢 **Result:** Every single night at 2:00 AM, Windows Server Backup will silently back up all changes, Active Directory accounts, and mail data to Drive `B:\`!
 
----
+## 🧪 Phase 7: [TESTING PHASE] The Master 7-Step Enterprise Disaster Recovery Testing Suite
 
-## Phase 7: The Master 7-Step Enterprise Disaster Recovery Testing Suite
+> [!IMPORTANT]
+> **📢 TESTING & VERIFICATION PHASE STARTS HERE!**  
+> Everything in Phases 1 to 6 was **Installation & Configuration**.  
+> **Phase 7 is the Official Testing Phase** where we execute all 7 live test scenarios to verify, validate, and demonstrate disaster recovery for university grading!
 
 In real-world enterprise infrastructure (banks, hospitals, telecom datacenters), taking a backup is only 50% of the job. The other 50% is **rigorous, multi-scenario testing** to guarantee that data can be resurrected without corruption under real disaster conditions.
 
@@ -308,7 +320,14 @@ Below is the complete **7-Step Enterprise Disaster Recovery Testing Suite**:
 #### 🏢 Why We Do / Configure This:
 Before an organization can trust a disaster recovery plan, administrators must inspect the **Backup Catalog**. The catalog is the master database indexing every backup snapshot, timestamp, and recoverable component on Drive `B:\`. If the catalog is corrupt or missing, Windows cannot locate the `.vhdx` images during an emergency.
 
-#### 🛠️ Step-by-Step Execution Command:
+#### 🖱️ Option A: GUI Method (Windows Server Backup Console):
+1. Open **Server Manager** ──► Click **`Tools`** (top right) ──► Click **`Windows Server Backup`** (`wbadmin.msc`).
+2. In the left navigation pane, click **`Local Backup`**.
+3. In the center pane, look at the **`Backup Details`** / **`Total Backups`** box:
+   * It displays the number of point-in-time snapshots stored on `B:\`.
+4. Double-click the latest backup date on the visual calendar to view the list of backed up components (System State, Local Disk C:, Bare Metal Recovery).
+
+#### ⚡ Option B: PowerShell Method:
 Run this command in **PowerShell (Administrator)** on `pro-win-server`:
 
 ```powershell
@@ -329,7 +348,7 @@ Snapshot ID: {a4f129c8-72b1-49e0-811c-d32e1892fbc4}
 ```
 
 🎓 **What to Tell the Professor:**  
-*"This command inspects the VSS catalog on Drive `B:\` and proves that our backup version identifier is healthy, valid, and fully indexed to restore System State, Volumes, and individual Files."*
+*"This verifies the VSS catalog on Drive `B:\` and proves that our backup snapshot is healthy, indexed, and fully capable of restoring System State, Volumes, and individual Files."*
 
 ---
 
@@ -338,7 +357,23 @@ Snapshot ID: {a4f129c8-72b1-49e0-811c-d32e1892fbc4}
 #### 🏢 Why We Do / Configure This:
 Demonstrates point-in-time file recovery (RPO & RTO). When a critical company document or database file is maliciously encrypted by ransomware or accidentally deleted by an employee with `Shift + Delete`, the administrator extracts the original file directly from the `.vhdx` shadow image and resurrects it live without rebooting the server.
 
-#### 🛠️ Step-by-Step Execution Commands:
+#### 🖱️ Option A: GUI Method (Recovery Wizard):
+1. **Create & Back up the test file first:**
+   * Create `C:\Corporate_Secret.txt` with text `"CONFIDENTIAL BUDGET 2026"`.
+   * Run a backup to `B:\`.
+   * **Simulate Disaster:** Delete `C:\Corporate_Secret.txt` so it is completely gone.
+2. **Perform the GUI Recovery:**
+   * Open **Windows Server Backup** (`wbadmin.msc`).
+   * In the right **Actions** pane, click **`Recover...`**.
+   * **Getting Started:** Select 🔘 **`This server (pro-win-server)`** ──► Click **`Next`**.
+   * **Select Backup Date:** Select today's date from the calendar ──► Select backup time ──► Click **`Next`**.
+   * **Select Recovery Type:** Select 🔘 **`Files and folders`** ──► Click **`Next`**.
+   * **Select Items to Recover:** In the tree, expand `pro-win-server` ──► expand `C:` ──► check ☑️ **`Corporate_Secret.txt`** ──► Click **`Next`**.
+   * **Specify Recovery Options:** Select 🔘 **`Original location`** ──► Select 🔘 **`Overwrite the existing versions with the recovered versions`** ──► Click **`Next`**.
+   * **Confirmation:** Click 👉 **`Recover`**!
+3. Watch the progress bar say **`Status: Completed`**. Open File Explorer: `C:\Corporate_Secret.txt` is back!
+
+#### ⚡ Option B: PowerShell Method:
 
 ```powershell
 # 1. Create a confidential mission-critical company file on Drive C:
@@ -367,7 +402,7 @@ CONFIDENTIAL: RUPP Class Year 4 Master Security Key 2026
 ```
 
 🎓 **What to Tell the Professor:**  
-*"We simulated a ransomware attack by permanently deleting `Corporate_Secret.txt`. Using `wbadmin start recovery`, we extracted the file from the shadow copy on `B:\` and restored it in 5 seconds with 100% data integrity."*
+*"We simulated a ransomware attack by permanently deleting `Corporate_Secret.txt`. Using the recovery engine, we extracted the file from the shadow copy on `B:\` and restored it in 5 seconds with 100% data integrity."*
 
 ---
 
@@ -376,7 +411,17 @@ CONFIDENTIAL: RUPP Class Year 4 Master Security Key 2026
 #### 🏢 Why We Do / Configure This:
 Human administrators forget manual tasks. Enterprise Business Continuity Plans (BCP) require **automated, unattended daily backups** scheduled during off-peak hours (e.g. 2:00 AM) to prevent database lockups and network congestion during active business hours.
 
-#### 🛠️ Step-by-Step Execution Commands:
+#### 🖱️ Option A: GUI Method (Task Scheduler & WSB Console):
+1. **Via Windows Server Backup Console:**
+   * Open **Windows Server Backup** (`wbadmin.msc`).
+   * In right **Actions** pane, click **`Backup Schedule...`** to view the active schedule configuration (`2:00 AM daily`).
+2. **Via Windows Task Scheduler:**
+   * Open **Server Manager** ──► **`Tools`** ──► click **`Task Scheduler`** (`taskschd.msc`).
+   * In left tree, expand **`Task Scheduler Library`** ──► **`Microsoft`** ──► **`Windows`** ──► **`Backup`**.
+   * In the center pane, click **`Microsoft-Windows-WindowsBackup`**.
+   * Click the **`Triggers`** tab: verify it shows **`At 2:00 AM every day`** with status **`Enabled`**!
+
+#### ⚡ Option B: PowerShell Method:
 
 ```powershell
 # 1. Verify the active automated backup policy registered in Windows Task Scheduler:
@@ -401,13 +446,21 @@ Schedule : {02:00:00}
 #### 🏢 Why We Do / Configure This:
 External compliance auditors (e.g. ISO 27001, Central Bank audits) and executive managers require visual verification of backup health. The MMC GUI console provides visual status indicators and a visual calendar history of successful recovery points.
 
-#### 🛠️ Step-by-Step Execution:
+#### 🖱️ Option A: GUI Method:
 1. Open **Server Manager** ──► Click **`Tools`** ──► Click **`Windows Server Backup`** (or press `Win + R` and type `wbadmin.msc`).
 2. In the left navigation tree, select **`Local Backup`**.
 3. Inspect the center dashboard:
    * **Status:** Look for the green shield: **`Last Backup: Successful`**.
    * **Next Backup:** Shows scheduled time (`2:00 AM`).
    * **Total Backups:** Shows the number of available point-in-time recovery versions.
+   * **Calendar View:** Shows dates highlighted with successful backup badges.
+
+#### ⚡ Option B: PowerShell Method:
+
+```powershell
+# Query details of the most recent backup job:
+Get-WBJob -Previous 1
+```
 
 🎓 **What to Tell the Professor:**  
 *"We open `wbadmin.msc` to demonstrate the graphical management console, showing audit-ready green health indicators and calendar snapshot history for executive reporting."*
@@ -419,7 +472,14 @@ External compliance auditors (e.g. ISO 27001, Central Bank audits) and executive
 #### 🏢 Why We Do / Configure This:
 Backing up an active, running Active Directory (`ntds.dit`) or SQL database without stable VSS writers produces a **corrupted, unbootable backup**. VSS Writers pause disk writes for a few milliseconds to ensure database consistency. Checking `vssadmin list writers` guarantees that all critical system components flushed their buffers cleanly.
 
-#### 🛠️ Step-by-Step Execution Command:
+#### 🖱️ Option A: GUI Method (Event Viewer):
+1. Open **Server Manager** ──► Click **`Tools`** ──► Click **`Event Viewer`** (`eventvwr.msc`).
+2. In the left tree, expand **`Windows Logs`** ──► click **`Application`**.
+3. In the right pane, click **`Filter Current Log...`**.
+4. Event Sources: check **`VSS`**, **`ESENT`**, and **`NTDS`** ──► click **`OK`**.
+5. Look at the top events: Event ID **`2001`** / **`2005`** with Level **`Information`**: *"Volume Shadow Copy Service completed successfully"*.
+
+#### ⚡ Option B: PowerShell Method:
 
 ```powershell
 # Inspect the health of all registered Volume Shadow Copy Service (VSS) writers:
@@ -456,7 +516,20 @@ Writer name: 'IIS Metabase Writer'
 #### 🏢 Why We Do / Configure This:
 Simple file backup does not protect Active Directory identities. If an administrator accidentally deletes an employee account (`s.pengsorng`), the user's unique **Security Identifier (SID)**, Kerberos password hashes, and group permissions are lost. Active Directory object recovery resurrects the user with their **exact same SID**, allowing them to log in immediately without IT having to reconfigure 50 permissions manually!
 
-#### 🛠️ Step-by-Step Execution Commands:
+#### 🖱️ Option A: GUI Method (Active Directory Administrative Center):
+1. **Enable Recycle Bin (One-time):**
+   * Open **Server Manager** ──► **`Tools`** ──► **`Active Directory Administrative Center`** (`dsac.exe`).
+   * Click **`e6 (local)`** in the left tree ──► in the right Tasks pane, click **`Enable Recycle Bin...`** ──► Click **`OK`**.
+2. **Simulate Disaster:**
+   * Open **`Active Directory Users and Computers`** (`dsa.msc`).
+   * Expand `e6.local` ──► click `Users` ──► right-click user **`s.pengsorng`** ──► click **`Delete`** ──► Confirm Yes.
+3. **Resurrect User via GUI:**
+   * In **Active Directory Administrative Center**, click **`e6 (local)`** ──► double-click **`Deleted Objects`** folder.
+   * Right-click user **`s.pengsorng`** ──► click **`Restore`**!
+4. **Verification:**
+   * Go back to `dsa.msc`, press **`F5`** to refresh ──► User **`s.pengsorng`** is back in `Users` with all group memberships intact!
+
+#### ⚡ Option B: PowerShell Method:
 
 ```powershell
 # 1. Enable the Active Directory Recycle Bin feature on forest e6.local (Run once):
@@ -494,7 +567,14 @@ UserPrincipalName : s.pengsorng@e6.local
 #### 🏢 Why We Do / Configure This:
 Without automated retention policies, daily enterprise backups will rapidly fill up storage targets, eventually causing backup failures due to `0x80070070 (Disk Full)`. Big enterprises enforce **Retention Rules** (e.g. keep only the 3 most recent backups and automatically purge stale historical snapshots to recycle disk space).
 
-#### 🛠️ Step-by-Step Execution Command:
+#### 🖱️ Option A: GUI Method (Disk Management & Shadow Copies Properties):
+1. Press **`Win + R`**, type **`diskmgmt.msc`**, and press Enter.
+2. In Disk Management, right-click Drive **`B:\ (Backups)`** ──► click **`Properties`**.
+3. Click the **`Shadow Copies`** tab.
+4. Click **`Settings...`** to view or configure the **Maximum size limit** (e.g., 20 GB).
+5. View the list of active shadow copies with exact dates and timestamps to verify old versions are managed properly.
+
+#### ⚡ Option B: PowerShell Method:
 
 ```powershell
 # Purge historical System State backups, keeping strictly the 3 most recent versions:
@@ -512,6 +592,8 @@ Deleted 0 backup versions older than the latest 3 versions.
 
 🎓 **What to Tell the Professor:**  
 *"We execute storage lifecycle retention policies to enforce automated disk recycling, ensuring that Drive `B:\` preserves the 3 newest operational points while preventing storage exhaustion."*
+
+---
 
 ---
 
