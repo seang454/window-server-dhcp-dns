@@ -23,14 +23,19 @@
 ---
 
 ### 🧪 PART 2: THE OFFICIAL TESTING & VERIFICATION PHASE (PHASE 7)
-8. [Phase 7: [TESTING PHASE] The Master 7-Step Enterprise Disaster Recovery Testing Suite](#phase-7-testing-phase-the-master-7-step-enterprise-disaster-recovery-testing-suite)
-   * [7.1 Flow 1: Backup Catalog Verification (Checking the Storage Vault)](#-71-flow-1-backup-catalog-verification-checking-the-storage-vault)
-   * [7.2 Flow 2: Live Mission-Critical File Disaster Recovery (Ransomware Test)](#-72-flow-2-live-mission-critical-file-disaster-recovery-ransomware--deletion-simulation)
-   * [7.3 Flow 3: Automated Daily 2:00 AM Schedule Verification (Unattended BCP)](#-73-flow-3-automated-daily-200-am-schedule-verification-unattended-bcp-policy)
-   * [7.4 Flow 4: Visual GUI Console Verification (Auditor Proof)](#-74-flow-4-visual-gui-console-verification-executive--auditor-proof)
-   * [7.5 Flow 5: VSS Writer Health & Database Consistency Check (Bank-Grade)](#-75-flow-5-vss-writer-health--database-consistency-check-bank-grade-integrity)
-   * [7.6 Flow 6: Active Directory Object Disaster Recovery (Deleted User Resurrect)](#-76-flow-6-active-directory-object-disaster-recovery-deleted-user-account-resurrect)
-   * [7.7 Flow 7: Automated Backup Retention Policy & Storage Purge (Lifecycle)](#-77-flow-7-automated-backup-retention-policy--storage-purge-lifecycle-management)
+8. [Phase 7: [TESTING PHASE] The Master 10-Step Enterprise Disaster Recovery Testing Suite](#phase-7-testing-phase-the-master-7-step-enterprise-disaster-recovery-testing-suite)
+   * **🖥️ Server-Side Testing Flows (Flows 1 – 7):**
+     * [7.1 Flow 1: Backup Catalog Verification (Checking the Storage Vault)](#-71-flow-1-backup-catalog-verification-checking-the-storage-vault)
+     * [7.2 Flow 2: Live Mission-Critical File Disaster Recovery (Ransomware Test)](#-72-flow-2-live-mission-critical-file-disaster-recovery-ransomware--deletion-simulation)
+     * [7.3 Flow 3: Automated Daily 2:00 AM Schedule Verification (Unattended BCP)](#-73-flow-3-automated-daily-200-am-schedule-verification-unattended-bcp-policy)
+     * [7.4 Flow 4: Visual GUI Console Verification (Auditor Proof)](#-74-flow-4-visual-gui-console-verification-executive--auditor-proof)
+     * [7.5 Flow 5: VSS Writer Health & Database Consistency Check (Bank-Grade)](#-75-flow-5-vss-writer-health--database-consistency-check-bank-grade-integrity)
+     * [7.6 Flow 6: Active Directory Object Disaster Recovery (Deleted User Resurrect)](#-76-flow-6-active-directory-object-disaster-recovery-deleted-user-account-resurrect)
+     * [7.7 Flow 7: Automated Backup Retention Policy & Storage Purge (Lifecycle)](#-77-flow-7-automated-backup-retention-policy--storage-purge-lifecycle-management)
+   * **💻 Client-Side Testing Flows (Flows 8 – 10):**
+     * [7.8 Client Flow 8: Self-Service Shadow Copy File Recovery ("Restore Previous Versions")](#-78-client-flow-8-self-service-shadow-copy-file-recovery-restore-previous-versions-on-client-vm-)
+     * [7.9 Client Flow 9: Centralized Client-to-Server Endpoint Backup (File History over LAN)](#-79-client-flow-9-centralized-client-to-server-endpoint-backup-file-history-over-lan-)
+     * [7.10 Client Flow 10: Total Client Machine Destruction & Domain Profile Resurrection](#-710-client-flow-10-total-client-machine-destruction--domain-profile-resurrection-)
 
 ---
 
@@ -594,6 +599,85 @@ Deleted 0 backup versions older than the latest 3 versions.
 *"We execute storage lifecycle retention policies to enforce automated disk recycling, ensuring that Drive `B:\` preserves the 3 newest operational points while preventing storage exhaustion."*
 
 ---
+
+### 🧪 7.8 Client Flow 8: Self-Service Shadow Copy File Recovery ("Restore Previous Versions" on Client VM) 💻
+
+#### 🏢 Why We Do / Configure This (Enterprise Perspective):
+In a company with 500 employees, users constantly overwrite, corrupt, or accidentally delete files on shared network drives (`\\pro-win-server\software`). Instead of calling IT and waiting 2 days for a ticket, enterprises enable **VSS Shadow Copies** on shared folders so employees can resurrect previous versions in **5 seconds by themselves**!
+
+#### 🖱️ Option A: Step-by-Step GUI on Client VM (`192.168.1.100` / Windows 8.1/10):
+1. On the **Client VM**, open File Explorer and access the server network share:
+   * Press `Win + R` ──► type `\\pro-win-server\software` (or your shared folder) ──► press Enter.
+2. **Create a Test Document:**
+   * Create a file: `Department_Budget.txt`.
+   * Type text: `"Original Approved Budget: $500,000 USD"`. Save and close.
+3. **Simulate User Error (Accidental Overwrite):**
+   * Open `Department_Budget.txt`, delete the text, type `"CORRUPTED BLANK DATA"`, and save it!
+4. **Self-Service File Resurrect via Previous Versions:**
+   * Right-click `Department_Budget.txt` ──► click **`Properties`**.
+   * Click the **`Previous Versions`** tab.
+   * You will see the earlier point-in-time timestamp (captured by Server VSS).
+   * Click the version ──► click 👉 **`Restore...`** ──► Confirm **`Restore`**.
+5. Open `Department_Budget.txt` on the client:
+   * **`Original Approved Budget: $500,000 USD`** is restored! 🎉
+
+#### ⚡ Option B: PowerShell Method on Client VM:
+```powershell
+# Verify restored content from Client VM:
+Get-Content "\\pro-win-server\software\Department_Budget.txt"
+```
+
+🎓 **What to Tell the Professor:**  
+*"We demonstrated enterprise self-service recovery from the client computer. Using Volume Shadow Copy (VSS) Previous Versions over SMB, an employee can restore overwritten work directly in File Explorer without contacting the IT helpdesk."*
+
+---
+
+### 🧪 7.9 Client Flow 9: Centralized Client-to-Server Endpoint Backup (File History over LAN) 💻➡️🏢
+
+#### 🏢 Why We Do / Configure This (Enterprise Perspective):
+Employees store confidential local reports on their laptop `C:\Users\Username\Documents\`. If an employee's laptop hard drive physically dies or gets stolen, local data is permanently lost. Enterprises configure client machines to automatically stream file backups over the network to the central server backup repository (`\\pro-win-server\Backups\Clients\`).
+
+#### 🖱️ Option A: Step-by-Step GUI on Client VM:
+1. **On Client VM**, open **Control Panel** ──► click **`File History`** (or *Backup and Restore*).
+2. In the left menu, click **`Select drive`** ──► click **`Add network location`**.
+3. Type the network backup path: `\\pro-win-server\Backups` ──► click **`Select Folder`** ──► click **`OK`**.
+4. Click the button 👉 **`Turn on`** to activate automated client backup streaming!
+5. **Simulate Disaster on Client:**
+   * Go to `C:\Users\s.pengsorng\Documents\` ──► permanently delete `Secret_Proposal.docx`.
+6. **Restore via File History GUI:**
+   * In File History, click **`Restore personal files`**.
+   * Browse to `Secret_Proposal.docx` ──► click the big green **Restore** circle button at the bottom!
+   * The file is restored back to the client desktop!
+
+#### ⚡ Option B: PowerShell Command on Server to Verify Client Vault:
+```powershell
+# Run on pro-win-server to view files backed up by client machines:
+Get-ChildItem -Path "B:\FileHistory\" -Recurse
+```
+
+🎓 **What to Tell the Professor:**  
+*"We configured centralized endpoint protection. The client computer continuously streams file revisions over the LAN to the server vault on Drive `B:\`, ensuring zero data loss if the client laptop crashes."*
+
+---
+
+### 🧪 7.10 Client Flow 10: Total Client Machine Destruction & Domain Profile Resurrection 💻💥➡️✨
+
+#### 🏢 Why We Do / Configure This (Enterprise Perspective):
+If an employee drops their laptop into water or it gets stolen:
+1. IT hands the employee a brand-new, empty computer.
+2. The employee logs in with domain credentials: `E6\s.pengsorng`.
+3. Active Directory and the Server storage immediately reconstruct the user's environment, domain permissions, network drive mappings, and certificates onto the new machine!
+
+#### 🖱️ Step-by-Step Test on Client VM:
+1. On the **Client VM**, create test shortcuts and files on the desktop while logged in as `E6\s.pengsorng`.
+2. Log out of the Client VM.
+3. Log in as `E6\Administrator`.
+4. Delete the local profile cache: `C:\Users\s.pengsorng` (simulating a fresh blank computer).
+5. Log out and log back in as `E6\s.pengsorng`:
+   * Active Directory and Domain Controllers in `e6.local` authenticate the user, query `SYSVOL` and GPOs, and rebuild the profile cleanly!
+
+🎓 **What to Tell the Professor:**  
+*"This demonstrates enterprise endpoint disaster recovery. Even if client hardware is completely destroyed, user authentication and centralized domain configurations allow instant recovery on any new client device."*
 
 ---
 

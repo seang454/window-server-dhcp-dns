@@ -464,6 +464,11 @@
   Get-WBSchedule -Policy (Get-WBPolicy)
   ```
   👉 *Verify:* Returns `{02:00:00}`, proving the automated midnight backup timer is active!
+* **Test Case 4 (Client-Side Self-Service Shadow Copy Recovery - Previous Versions):**
+  1. On the Windows 8 Client VM, access `\\pro-win-server\software\test.txt`.
+  2. Overwrite file with blank text.
+  3. Right-click file ──► `Properties` ──► `Previous Versions` tab ──► click `Restore`.
+  👉 *Verify:* File on Client VM is resurrected from Server VSS shadow copy in 5 seconds without IT admin help!
 
 ---
 

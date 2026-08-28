@@ -747,34 +747,126 @@ A single Database Server instance running on Windows Server can host **dozens or
 
 ---
 
-## 🚀 Part 1: PostgreSQL 18 Setup Guide (Completed ✅)
+## 🚀 Part 1: PostgreSQL 18 Full Setup, Network Configuration & Client Connection Guide
 
 ---
 
 ### Step 1: Install PostgreSQL Database Server on Server VM (`pro-win-server`)
 
 #### 🎯 Objective & Purpose
-To install PostgreSQL Server engine (v18+) and pgAdmin 4 management console on `pro-win-server`.
+To install the PostgreSQL Server engine (v18+), pgAdmin 4 GUI management console, and `psql` command-line tools on `pro-win-server` (`192.168.1.10`).
 
-#### ⚙️ Configuration Steps
+#### 🖱️ Option A: GUI Installer Steps:
 1. Download **PostgreSQL Windows x64 Installer** from `https://www.postgresql.org/download/windows/`.
 2. Run `postgresql-18.x-x64.exe` as Administrator.
 3. Select installation directory: `C:\Program Files\PostgreSQL\18`.
 4. Select components: Check ✅ **PostgreSQL Server**, ✅ **pgAdmin 4**, ✅ **Command Line Tools**.
 5. Set password for superuser `postgres` *(e.g., `Admin123!`)*.
 6. Set Port: `5432`.
-7. Click **Next → Next → Install** → wait for completion → click **Finish**.
+7. Click **Next ──► Next ──► Install** ──► wait for completion.
+8. When **Stack Builder** pops up at the end: Click **`Cancel`** (and confirm **Yes** to exit).
+
+#### ⚡ Option B: Automated PowerShell Installation:
+```powershell
+winget install PostgreSQL.PostgreSQL -e --accept-source-agreements --accept-package-agreements
+```
 
 ---
 
-### Step 2: Configure `postgresql.conf` & `pg_hba.conf` for Network Access
+### Step 2: Automated 1-Click Network & Firewall Configuration Script
 
-#### ⚙️ Configuration Steps
-1. Open `C:\Program Files\PostgreSQL\18\data\postgresql.conf` in Notepad as Admin.
-2. Set: `listen_addresses = '*'`.
-3. Open `C:\Program Files\PostgreSQL\18\data\pg_hba.conf` in Notepad as Admin.
-4. Add line: `host all all 192.168.1.0/24 scram-sha-256`.
-5. Restart PostgreSQL service in `services.msc`.
+By default, PostgreSQL only listens on `localhost` (`127.0.0.1`). We must configure it to listen on all LAN interfaces (`*`), authorize the client subnet (`192.168.1.0/24`), open Windows Firewall Port 5432, and restart the service!
+
+Run this script in **PowerShell (Administrator)** on `pro-win-server`:
+
+```powershell
+# 1. Locate PostgreSQL data folder automatically
+$pgData = (Get-ChildItem -Path "C:\Program Files\PostgreSQL" -Directory | Select-Object -First 1).FullName + "\data"
+$confFile = "$pgData\postgresql.conf"
+$hbaFile  = "$pgData\pg_hba.conf"
+
+Write-Host "Configuring PostgreSQL in: $pgData" -ForegroundColor Cyan
+
+# 2. Allow PostgreSQL to listen on all network IPs (*)
+(Get-Content $confFile) -replace "#listen_addresses = 'localhost'", "listen_addresses = '*'" `
+                        -replace "listen_addresses = 'localhost'", "listen_addresses = '*'" | Set-Content $confFile
+
+# 3. Allow Client Subnet (192.168.1.0/24) to connect in pg_hba.conf
+$rule = "host    all             all             192.168.1.0/24          scram-sha-256"
+if (-not (Select-String -Path $hbaFile -Pattern "192.168.1.0/24" -SimpleMatch)) {
+    Add-Content -Path $hbaFile -Value "`n# Allow LAN Client Connections:`n$rule"
+}
+
+# 4. Open Inbound Windows Firewall Port 5432
+if (-not (Get-NetFirewallRule -DisplayName "PostgreSQL Database Server (Port 5432)" -ErrorAction SilentlyContinue)) {
+    New-NetFirewallRule -DisplayName "PostgreSQL Database Server (Port 5432)" -Direction Inbound -Protocol TCP -LocalPort 5432 -Action Allow | Out-Null
+    Write-Host "Firewall Port 5432 opened successfully!" -ForegroundColor Green
+}
+
+# 5. Restart PostgreSQL Service to apply changes
+Restart-Service -Name postgresql*
+Get-Service postgresql*
+
+# 6. Verify Port 5432 is live!
+Test-NetConnection -ComputerName 127.0.0.1 -Port 5432
+```
+
+---
+
+### Step 3: Create Sample Database, User & Tables on Server
+
+Run this in **PowerShell as Administrator** on `pro-win-server` to populate a production test database:
+
+```powershell
+$psql = (Get-ChildItem -Path "C:\Program Files\PostgreSQL" -Filter "psql.exe" -Recurse | Select-Object -First 1).FullName
+
+# Create Database and dedicated user
+& $psql -U postgres -c "CREATE DATABASE company_db;"
+& $psql -U postgres -c "CREATE USER dbuser WITH ENCRYPTED PASSWORD 'Pass123!';"
+& $psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE company_db TO dbuser;"
+
+# Create sample table with data
+& $psql -U postgres -d company_db -c "
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    role VARCHAR(50) NOT NULL,
+    salary NUMERIC(10, 2)
+);
+INSERT INTO employees (name, role, salary) VALUES 
+('Pengseang', 'Lead IT Systems Engineer', 3500.00),
+('Sophea', 'Database Administrator', 2800.00),
+('Vannak', 'Network Security Analyst', 2500.00);
+"
+```
+
+---
+
+### Step 4: Connect & Query from Client Computer (`192.168.1.100`)
+
+On your **Windows 8 / Windows 10 Client VM (`192.168.1.100`)**:
+
+#### 🖱️ Option A: Connect via DBeaver (GUI):
+1. Open **DBeaver** on the Client VM.
+2. Click **New Database Connection** (plug icon) ──► select **`PostgreSQL`**.
+3. Connection Settings:
+   * **Host:** `192.168.1.10`
+   * **Port:** `5432`
+   * **Database:** `company_db`
+   * **Username:** `dbuser`
+   * **Password:** `Pass123!`
+4. Click 👉 **`Test Connection ...`** ──► Returns **`Connected! PostgreSQL 18.x`**!
+5. Open SQL Editor and execute:
+   ```sql
+   SELECT * FROM employees;
+   ```
+   👉 *Verify:* The employee rows from `pro-win-server` appear on the client screen!
+
+#### ⚡ Option B: Verify Port from Client PowerShell:
+```powershell
+Test-NetConnection -ComputerName 192.168.1.10 -Port 5432
+```
+*Expected Result:* **`TcpTestSucceeded : True`**!
 
 ---
 
